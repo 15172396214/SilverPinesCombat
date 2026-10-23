@@ -8,6 +8,21 @@ Nexus Mods 页面文案（BBCode）
 - Tags 才是真正描述内容的，建议：[b]Gameplay[/b] + [b]Utilities for Players[/b]。
   别选 Cheats / Trainers —— 主体是手感改造，作弊只是附带的调试开关，挂 Cheats 会被归到修改器那一类。
 
+【Media 这一栏填什么】（上传页 Section 2: Media，三部分）
+1) [b]Header Image[/b] —— 页面顶部横幅。官方建议 [b]1400x400[/b]。没有就留空，不影响发布。
+2) [b]Mod Images[/b] —— 游戏截图，[b]16:9 / 1920x1080[/b] 最合适，官方建议至少 5 张。
+   [u]第一张会成为列表页缩略图[/u]，所以把最能说明问题的那张放第一（建议用枪口瞄准线那张，一眼能看出改了什么）。
+   禁止放占位图 / 与 mod 无关的图。
+3) [b]Videos[/b] —— [b]只收 YouTube 链接[/b]（Title + URL + 一句说明）。B站链接填这里不认。
+   没有 YouTube 就整栏留空，之后能编辑补上。
+
+要传哪些图（对应「发布素材清单.md」第二部分）：
+  01-panel-combat.png   面板战斗页        —— 放最后，用来说明可调参数
+  03-aimline.png        枪口线特写        —— 放第一张，当缩略图
+  04/05-stomp-*.png     踩踏命中 vs 踩空  —— 建议拼成一张左右对比图，算 1 张
+  06-dodge-cancel.png   攻击被闪避打断
+  再加一张英文面板截图（点 EN 之后），凑满 5 张。
+
 下面三段分别对应 Nexus 上传页的三个字段，直接复制粘贴。
 
 
