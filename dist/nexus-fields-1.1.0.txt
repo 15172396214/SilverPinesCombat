@@ -19,12 +19,12 @@ Fixes Silver Pines combat feel: attacks are dodge-cancellable at any point, stom
 
 【FILES 栏描述】
 
-SilverPinesCombat-1.1.0-full.zip  （Main file / 34.4 MB）
+SilverPinesCombat-1.1.0-full.zip  （Main file / 32.8 MB）
 Main file. Plugin + BepInEx 6.0.0-be.789 runtime in one archive - nothing else needed.
 Extract into the game root (same folder as Carpenter.exe). Watch out: Windows "Extract All" pre-fills a subfolder name; delete it or winhttp.dll ends up one level too deep and the mod silently never loads.
 First launch takes 1-3 minutes while BepInEx generates interop assemblies. That is normal.
 
-SilverPinesCombat-1.1.0.zip  （Optional file / 57 KB）
+SilverPinesCombat-1.1.0.zip  （Optional file / 56 KB）
 Plugin only. Use this if you already run BepInEx 6 IL2CPP be.789 or newer - merge its BepInEx folder into the game root and your existing setup stays as it is.
 Not compatible with the be.788 pack hosted on this site (one build behind what this was built and tested against).
 

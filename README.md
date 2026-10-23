@@ -23,8 +23,8 @@
 
 | 文件 | 体积 | 内容 |
 |---|---|---|
-| `SilverPinesCombat-1.1.0-full.zip` | **34.4 MB** | 插件 + BepInEx 6 be.789 全套，什么都不装，解压到游戏根目录就能用 |
-| `SilverPinesCombat-1.1.0.zip` | **57 KB** | 只有插件 DLL，适合已经装过 BepInEx 6 IL2CPP（be.789 或更新）的人 |
+| `SilverPinesCombat-1.1.0-full.zip` | **32.8 MB** | 插件 + BepInEx 6 be.789 全套，什么都不装，解压到游戏根目录就能用 |
+| `SilverPinesCombat-1.1.0.zip` | **56 KB** | 只有插件 DLL，适合已经装过 BepInEx 6 IL2CPP（be.789 或更新）的人 |
 
 ⚠️ 解压时别让资源管理器多套一层目录（默认会解到 `Silver Pines\SilverPinesCombat-1.1.0-full\`）。
 `winhttp.dll` 必须在 `Silver Pines\` 这一层，否则游戏能启动但 mod 完全不加载、且没有任何报错。

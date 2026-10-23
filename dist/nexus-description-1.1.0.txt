@@ -47,7 +47,7 @@ Check that these exist afterwards:
 The archive puts every document inside [i]BepInEx\plugins\SilverPinesCombat\[/i], so nothing is dropped loose into the game folder.
 
 [size=4][b]Already modding this game?[/b][/size]
-If you already run BepInEx 6 IL2CPP [b]be.789 or newer[/b], grab the optional [b]SilverPinesCombat-1.1.0.zip[/b] (57 KB, plugin only) and merge its [i]BepInEx[/i] folder into the game root — your existing setup stays exactly as it is.
+If you already run BepInEx 6 IL2CPP [b]be.789 or newer[/b], grab the optional [b]SilverPinesCombat-1.1.0.zip[/b] (56 KB, plugin only) and merge its [i]BepInEx[/i] folder into the game root — your existing setup stays exactly as it is.
 Heads up for the [b]be.788[/b] pack hosted on this site: it is one build behind what this plugin was built and tested against. The interop assemblies BepInEx generates differ between builds, so don't assume it works there. The full archive is the safe pick — it brings you up to be.789 in place.
 
 [size=4][b]Requirements[/b][/size]
