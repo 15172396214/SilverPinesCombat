@@ -1,11 +1,14 @@
-# Silver Pines Combat v1.0.0
+# Silver Pines Combat v1.1.0
 
 [English](README.en.md) | [中文](README.md)
 
 Combat feel overhaul for *Silver Pines* (Steam AppID 2333000). Everything happens at runtime — no game file is modified.
 
-Three things you'll notice right away:
+What's new and worth noticing:
 
+- **Expandable inventory** — set extra rows (0–10) from the panel; the grid grows to match, and upgrades you already bought still stack on top. Shrinking is refused while the extra rows still hold items (an out-of-bounds item can hard-lock the game menu)
+- **Movement no longer drags your aim** — left stick / WASD no longer change the aim angle, while the right stick or mouse still turns you normally
+- **Visible dodge i-frames** (off by default) — the character tints bright cyan while invulnerable, so you can see exactly how long the window is
 - **A thin muzzle line while aiming** — grey, fixed length, only visible when you actually aim
 - **Dodge cancels attacks** — vanilla only lets you cancel during startup and after the hitbox closes; now the whole attack is cancellable
 - **Stomp steps forward first** — press stomp and the character closes the gap to exactly stomping range instead of whiffing in place
