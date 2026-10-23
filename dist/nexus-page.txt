@@ -55,6 +55,35 @@ Nexus Mods 页面文案（BBCode）
 ③ 想省流量的人拿 45 KB 小包，描述里写清了前提条件。
 以后若在 be.788 上实测通过，可改成「小包=Main + pack 设为 required」，那样主下载只有 45 KB、Vortex 还能自动补前置。
 
+【2026-10-23 15:10 隔离事故 + 处理】
+full 包上传后被自动扫描隔离（quarantined），页面上没有下载按钮，扫码器给的三个可能原因：
+"Executables and similar file types / Flagging by our internal file scanners or VirusTotal /
+Nested archives (e.g. a zip containing another zip)"。
+
+根因排查（对比官方 be.788 原包）：
+| | 官方 be.788 包（站内 mods/20，未被隔离） | 我们原来的 full 包 |
+|---|---|---|
+| 条目数 | 233 | 312 |
+| dll 数 | 217 | 296 |
+| 嵌套 zip | 无 | [b]BepInEx/unity-libs/6000.3.15.zip[/b] ← 命中"nested archive" |
+原因：full 包是从【已经跑过一次的游戏目录】拷贝的，把 BepInEx 首启生成的 unity-libs 缓存
+（78 个 dll + 那个 zip，11.3 MB）一起打进去了。官方原包不含它，首启时自己生成。
+
+处理：剔除 BepInEx/unity-libs 整段后重打 → 条目 233 / dll 218（多的是我们的插件）/
+无嵌套 zip / 32.79 MB，与官方 be.788 包结构完全对齐。删掉隔离文件后重传这个版本。
+
+【版本兼容性实测证据】（决定要不要把 44KB 设为主文件时用得上）
+用 System.Reflection.Metadata 读了三方的 AssemblyRef：
+| 引用 | 插件 | be.788 | be.789 |
+|---|---|---|---|
+| BepInEx.Core | v6.0.0.0 | v6.0.0.0 | v6.0.0.0 |
+| Il2CppInterop.Runtime | v1.5.3.0 | v1.5.3.0 | v1.5.3.0 |
+| UnityEngine.*Module | v0.0.0.0 | v0.0.0.0 | v0.0.0.0 |
+| Il2Cppmscorlib | v4.0.0.0 | v4.0.0.0 | v4.0.0.0 |
+⇒ 两版前置的托管程序集版本完全相同，44KB 插件在站内 be.788 前置包上[b]应当[/b]可以直接跑
+（尚未真机验证）。如果验证通过，可把 44KB 升成 Main File + 把 be.788 包设为 required，
+那是 Nexus 上最标准的做法（不捆绑 BepInEx 就不会再被隔离）。
+
 两个文件描述（Files 页签直接显示，多数人不看正文页）：
 
 --- full 包 / Main File ---
