@@ -1,0 +1,19 @@
+给《银松镇 / Silver Pines》做的战斗手感 mod。运行时内存打 patch，不动任何游戏文件。
+
+【功能】
+闪避取消攻击 —— 整段攻击动画随时能被闪避打断
+踩踏前踏吸附 —— 踩踏前向前垫一步，不再原地踩空
+枪械瞄准线 —— 瞄准时枪口画一条细线，翻滚中不显示
+附加 —— F1-F5 作弊 / F6 慢动作 / 判定框绘制（默认关）/ F7 开关面板（中英双语）
+
+【安装】
+没装过 BepInEx：下 full 包，把里面的 winhttp.dll、doorstop_config.ini、BepInEx、dotnet 拖进游戏根目录（和 Carpenter.exe 同一层）。首次启动卡 1-3 分钟属正常，进游戏按 F7 出面板即成功。
+已装 BepInEx 6 be.789+：下 45KB 插件包，把 BepInEx\plugins\SilverPinesCombat\ 放进你的 BepInEx\plugins\。
+⚠️ 解压别多套一层目录，winhttp.dll 必须和 Carpenter.exe 同级，否则 mod 静默不加载且不报错。
+卸载：删掉 BepInEx\plugins\SilverPinesCombat\ 即可。
+
+【下载】
+GitHub：https://github.com/15172396214/SilverPinesCombat
+Nexus：https://www.nexusmods.com/silverpines/mods/28
+
+#银松镇 #SilverPines #游戏mod #IL2CPP #Unity

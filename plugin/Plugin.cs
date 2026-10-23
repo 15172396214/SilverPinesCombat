@@ -30,6 +30,7 @@ namespace SilverPinesCombat
         public static ConfigEntry<bool> CfgDrawBoxes;
         public static ConfigEntry<bool> CfgAiBlind;
         public static ConfigEntry<float> CfgSlowMo;
+        public static ConfigEntry<bool> CfgGpDiag;
 
         // ---------- 战斗改造 ----------
         public static ConfigEntry<bool> CfgDodgeCancel;
@@ -46,6 +47,19 @@ namespace SilverPinesCombat
         public static ConfigEntry<float> CfgAimLineShowDelay;
         public static ConfigEntry<string> CfgLanguage;
 
+        // ---------- 手柄：左摇杆不影响瞄准 ----------
+        public static ConfigEntry<bool> CfgAimLockLeftStick;
+        public static ConfigEntry<float> CfgAimLockDeadzone;
+
+        // ---------- 背包 ----------
+        public static ConfigEntry<int> CfgBagExtraRows;
+
+        // ---------- 辅助瞄准 ----------
+        public static ConfigEntry<bool> CfgAimAssistEnabled;
+        public static ConfigEntry<float> CfgAimAssistStrength;
+        public static ConfigEntry<float> CfgAimAssistMaxDist;
+        public static ConfigEntry<float> CfgAimAssistTolerance;
+
         public override void Load()
         {
             Inst = this;
@@ -57,7 +71,41 @@ namespace SilverPinesCombat
             CfgDrawBoxes = Config.Bind("Debug", "DrawDamageColliders", false, "绘制判定框 DRAW_DAMAGE_COLLIDERS");
             CfgAiBlind = Config.Bind("Debug", "AiOblivious", false, "AI 失明 s_aiOblivious");
             CfgSlowMo = Config.Bind("Debug", "SlowMoScale", 0.35f, "慢动作倍率 (F6 切换)");
+            CfgGpDiag = Config.Bind("Debug", "GamepadInputLog", false,
+                "手柄输入诊断日志。每 0.2s 采样一次 CharacterInputPlayer 的移动/瞄准输入，" +
+                "用来查清【左摇杆为什么会改变瞄准角度】。值没变化时不重复打印。排障用，平时请关掉。");
+            // ===== 瞄准时移动不干扰方向（手柄 + 键鼠通用）=====
+            CfgAimLockLeftStick = Config.Bind("Aim", "GamepadLockAimFromMovement", true,
+                "瞄准时移动输入（左摇杆 / WASD）不再改变瞄准角度，也不再抢角色朝向。" +
+                "★ 根因（实测）：这是 2D 精灵角色，朝向只有左/右两种、靠镜像翻转实现，而朝向由移动输入的左右符号决定。" +
+                "所以 A/D 一翻面，瞄准方向就被水平镜像；手柄左右摇杆不同侧时，镜像后角度超出手臂可达范围，就卡在最高/最低位。" +
+                "开启后：瞄准时把移动输入对齐到瞄准方向，朝向只跟右摇杆/鼠标走。");
+            CfgAimLockDeadzone = Config.Bind("Aim", "GamepadAimDeadzone", 0.15f,
+                "摇杆死区。摇杆偏移量小于这个值算没动。游戏自身也有死区，这里偏大一点更稳。");
+
             CfgLanguage = Config.Bind("General", "Language", "auto", "界面语言 / UI language: auto(跟随系统) | zh | en");
+
+            // ===== 背包 =====
+            CfgBagExtraRows = Config.Bind("Bag", "ExtraRows", 1,
+                "背包额外行数（0-10）。运行时改 PlayerMainInventory.m_baseInventorySize，" +
+                "游戏内 InventorySize = base + 已购扩容道具，所以不会覆盖你已经买的扩容。" +
+                "UI 的格子是动态生成的，会自动跟着长。" +
+                "⚠️ 缩容前先清空多出来的行，否则里面的物品可能丢失。");
+
+            // ===== 辅助瞄准 =====
+            CfgAimAssistEnabled = Config.Bind("AimAssist", "Enabled", false,
+                "辅助瞄准（弱点优先）。默认关闭。" +
+                "★ 游戏自带的 ApplyAimAssist 用不了：实测 AimTargetSet 目标数恒为 0（生成出来的敌人不注册进去），" +
+                "所以这条是按现象自己实现的：把准星方向往最近的弱点区域拉。");
+            CfgAimAssistStrength = Config.Bind("AimAssist", "Strength", 0.30f,
+                "吸附强度 0.1-0.4。每帧朝目标方向插值的比例。越大越黏，越小越隐形。");
+            CfgAimAssistMaxDist = Config.Bind("AimAssist", "MaxDistance", 9f,
+                "最大吸附距离（米）。超过就不吸。");
+            CfgAimAssistTolerance = Config.Bind("AimAssist", "Tolerance", 0.80f,
+                "容差（米）。在弱点半径之外再放宽多少算'瞄到附近'。" +
+                "判据是【垂直距离】：准星射线离弱点中心多远。实测玩家的自然瞄偏差在 0.3~0.4m，" +
+                "所以容差给 0.3 会导致只有贴住弱点时才吸（实际等于没吸）。");
+
 
             // ===== 战斗改造 =====
             CfgDodgeCancel = Config.Bind("Combat.Dodge", "CancelAttack", true,
@@ -92,17 +140,21 @@ namespace SilverPinesCombat
 
             // SPT_DUMMY_VALIDATION：用 DummyDll 做编译校验时才定义
             // （DummyDll 的 MonoBehaviour 不派生 Il2CppObjectBase，泛型约束过不了）
+            // ★ patch 必须放在最前面：后面任何一步（语言解析 / 组件挂载）出异常都不该拖垮功能改造。
+            // 踩过的坑：一次 Config 绑定被误删，Load() 在语言那行抛 NRE，
+            // 结果 Apply() 整个没跑 —— 面板还在、patch 全灭，表现为"功能静默失效"，极难排查。
+            Diagnose();
+            CombatPatches.Apply();
+
+            L10n.Lang = ResolveLang(CfgLanguage?.Value);
+            Log.LogInfo("[SPC] loaded v1.0.0 (be.789 / IL2CPP) lang=" + L10n.Lang);
+
 #if !SPT_DUMMY_VALIDATION
             AddComponent<CombatBehaviour>();
             Log.LogInfo("[SPC] HUD attached");
 #else
             Log.LogWarning("[SPC] DUMMY build - HUD not attached (compile-check only)");
 #endif
-
-            L10n.Lang = ResolveLang(CfgLanguage.Value);
-            Log.LogInfo("[SPC] loaded v1.0.0 (be.789 / IL2CPP) lang=" + L10n.Lang);
-            Diagnose();
-            CombatPatches.Apply();
         }
 
         private static string ResolveLang(string raw)
@@ -242,6 +294,10 @@ namespace SilverPinesCombat
                 _harmony = new Harmony(CombatPlugin.GUID);
                 PatchDodgeCancel(log);
                 PatchStompLunge(log);
+                PatchAimLock(log);
+                PatchInputSuppress(log);
+                AimAssistProbe.PatchProbe(_harmony, log);
+                PatchAimAssist(log);
             }
             catch (Exception e) { log?.LogError("[SPC] CombatPatches.Apply failed: " + e); }
         }
@@ -490,6 +546,39 @@ namespace SilverPinesCombat
             return null;
         }
 
+        /// <summary>
+        /// 按【真实类型】重新包装代理。IL2CPP 代理对象的 GetType() 返回基类（Component/Object），
+        /// 所以反射游戏类成员前必须先用 Pointer + 真实类型重建一个类型正确的代理。
+        /// </summary>
+        public static object Rewrap(Type t, object o)
+        {
+            if (t == null || o == null) return o;
+            try
+            {
+                var b = o as Il2CppInterop.Runtime.InteropTypes.Il2CppObjectBase;
+                if (b == null || b.Pointer == IntPtr.Zero) return o;
+                return Activator.CreateInstance(t, b.Pointer);
+            }
+            catch { return o; }
+        }
+
+        /// <summary>按【已知类型】写成员（字段或可写属性）</summary>
+        public static bool SetMemberTyped(Type t, object obj, string name, object value)
+        {
+            if (t == null || obj == null) return false;
+            const System.Reflection.BindingFlags any =
+                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+            try
+            {
+                var p = t.GetProperty(name, any);
+                if (p != null && p.CanWrite) { p.SetValue(obj, value); return true; }
+                var f = t.GetField(name, any);
+                if (f != null) { f.SetValue(obj, value); return true; }
+            }
+            catch { }
+            return false;
+        }
+
         /// <summary>读成员：Il2CppInterop 把字段生成为属性，两种都试</summary>
         public static object GetMember(object obj, string name)
         {
@@ -507,7 +596,394 @@ namespace SilverPinesCombat
             return null;
         }
 
+        // ---------- 手柄：左摇杆不影响瞄准 ----------
+        //
+        // 采样实测（BepInEx 日志，字段名来自 dump.cs）：
+        //   右摇杆有输入 → m_aimDirection ≈ m_gamepadRawAimInput
+        //   右摇杆静止   → m_aimDirection ≈ m_movementInput（左摇杆 / 移动方向）
+        //   两者都有     → 右摇杆赢
+        // 也就是"边跑边瞄准，枪口跟着跑动方向甩"是游戏有意的兜底，不是 bug。
+        //
+        // 修法：patch CharacterInputPlayer.get_AimDirectionInput()（下游 CharacterAiming 读的就是它）。
+        // 不改 m_aimDirection 字段 —— 合成发生在游戏自己的 Update 里，
+        // 我们 MonoBehaviour 的 Update/LateUpdate 相对它的先后顺序不稳定，写了可能下一帧就被覆盖。
+        // patch getter 是唯一确定的拦截点：无论谁读、什么时候读，拿到的都是我们给的值。
+        private static Type _aimLockType;
+        private static Vector2 _lockDir;      // 锁定方向（单位向量）
+        private static bool _lockValid;       // _lockDir 是否可用
+        private static bool _wasAiming;       // 上一次采样是否在瞄准（用于捕捉"举枪瞬间"）
+        private static bool _lockLogged;      // 生效只日志一次，避免刷屏
+        private static bool _typeMismatchLogged;
+        private static Vector2 _lastMouse;    // 上一帧 m_mouseAimPosition（判断"玩家在主动转向"）
+        private static bool _hasLastMouse;
+        private static float _nextLockLog;    // 干预日志节流
+
+        private static void PatchAimLock(BepInEx.Logging.ManualLogSource log)
+        {
+            var t = AccessTools.TypeByName("CharacterInputPlayer");
+            if (t == null) { log?.LogError("[SPC] aim-lock: type CharacterInputPlayer not found"); return; }
+
+            var m = FindMethod(t, "get_AimDirectionInput");
+            if (m == null) { log?.LogError("[SPC] aim-lock: get_AimDirectionInput not found"); return; }
+
+            var postfix = new HarmonyMethod(typeof(CombatPatches)
+                .GetMethod(nameof(AimDirInputPostfix), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic));
+            if (postfix.method == null) { log?.LogError("[SPC] aim-lock: AimDirInputPostfix missing"); return; }
+
+            try
+            {
+                _harmony.Patch(m, postfix: postfix);
+                _aimLockType = t;
+                log?.LogInfo("[SPC] aim-lock patched: CharacterInputPlayer.get_AimDirectionInput");
+            }
+            catch (Exception e) { log?.LogError("[SPC] aim-lock patch failed: " + e.Message); }
+        }
+
+        /// <summary>
+        /// 覆盖瞄准输入：右摇杆静止 + 左摇杆在动 ⇒ 返回锁定方向，而不是移动方向。
+        /// 键鼠模式天然不受影响 —— 键鼠的瞄准由鼠标位置算，永远不会出现"瞄准方向 == 移动方向"这条回退路径。
+        /// </summary>
+        private static void AimDirInputPostfix(object __instance, ref Vector2 __result)
+        {
+            try
+            {
+                var cfg = CombatPlugin.CfgAimLockLeftStick;
+                if (cfg == null || !cfg.Value) return;
+
+                var inst = Rewrap(_aimLockType, __instance);
+                if (inst == null) return;
+
+                Vector2 locked;
+                if (!TryComputeLock(inst, __result, out locked)) return;
+
+                if (!_lockLogged)
+                {
+                    _lockLogged = true;
+                    CombatPlugin.Inst?.Log.LogInfo($"[SPC] aim-lock 生效(getter): 锁定 {_lockDir}，左摇杆不再改变瞄准角度");
+                }
+                __result = locked;
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// 判断这一帧要不要把瞄准方向换成锁定方向。
+        ///
+        /// 关键教训：不能只看 m_gamepadRawAimInput。实测发现同一台机器上瞄准可能走两条路——
+        ///   ① 手柄直连：右摇杆值出现在 m_gamepadRawAimInput，m_mouseAimPosition 恒 0
+        ///   ② 鼠标/模拟鼠标：右摇杆值被消费掉，m_gamepadRawAimInput 恒 0，真正的方向在 m_mouseAimPosition
+        /// 只认 ① 会导致 ② 下"基准永不更新 + 左摇杆一动就锁死"，表现就是左摇杆抢控制权。
+        ///
+        /// 所以判据改成"现象检测"：只要这一帧瞄准方向相对移动方向不是被绑架的状态，就放行并更新基准。
+        /// </summary>
+        private static bool TryComputeLock(object inst, Vector2 current, out Vector2 locked)
+        {
+            locked = current;
+            try
+            {
+                var aimV = GetMemberTyped(_aimLockType, inst, "IsAiming");
+                if (!(aimV is bool) || !(bool)aimV) { _wasAiming = false; _lockValid = false; return false; }
+
+                var rawV = GetMemberTyped(_aimLockType, inst, "m_gamepadRawAimInput");
+                var mvV = GetMemberTyped(_aimLockType, inst, "m_movementInput");
+                var mouseV = GetMemberTyped(_aimLockType, inst, "m_mouseAimPosition");
+                if (!(mvV is Vector2) && !_typeMismatchLogged)
+                {
+                    _typeMismatchLogged = true;
+                    CombatPlugin.Inst?.Log.LogWarning($"[SPC] aim-lock: 摇杆值类型不符 ({mvV?.GetType().Name})，已停用");
+                    return false;
+                }
+                Vector2 raw = rawV is Vector2 r ? r : Vector2.zero;
+                Vector2 mv = mvV is Vector2 v ? v : Vector2.zero;
+                Vector2 mouse = mouseV is Vector2 mz ? mz : Vector2.zero;
+
+                // 瞄准源是否在发生变化（鼠标位移 / 摇杆直连都算"玩家在主动转向"）
+                bool mouseMoved = _hasLastMouse && (mouse - _lastMouse).sqrMagnitude > 1.0f;
+                _lastMouse = mouse;
+                _hasLastMouse = true;
+
+                float dz = CombatPlugin.CfgAimLockDeadzone?.Value ?? 0.15f;
+                float dz2 = dz * dz;
+
+                // ① 玩家在主动转向（右摇杆有值，或鼠标位置在变）⇒ 放行，并把方向记成新基准
+                if (raw.sqrMagnitude > dz2 || mouseMoved)
+                {
+                    if (current.sqrMagnitude > 0.0001f)
+                    {
+                        _lockDir = current.normalized;
+                        _lockValid = true;
+                    }
+                    _wasAiming = true;
+                    return false;
+                }
+
+                // ② 举枪的那一帧：以游戏此刻给的方向为基准（举枪时朝哪就锁哪）
+                if (!_wasAiming)
+                {
+                    _wasAiming = true;
+                    _lockDir = current.sqrMagnitude > 0.0001f ? current.normalized : Vector2.zero;
+                    _lockValid = _lockDir.sqrMagnitude > 0.0001f;
+                    return false;
+                }
+
+                if (!_lockValid) return false;              // 没有基准可锁 ⇒ 放行原行为
+                if (mv.sqrMagnitude < dz2) return false;    // 左摇杆也没动 ⇒ 没什么可纠正的
+
+                // ③ 左摇杆在动：只有当瞄准方向确实被它拽过去（两者夹角很小）才认为是"回退"
+                //    夹角大说明玩家本来就想瞄那个方向，放行（否则会误锁）
+                if (current.sqrMagnitude > 0.0001f)
+                {
+                    float dot = Vector2.Dot(current.normalized, mv.normalized);
+                    if (dot < 0.85f) return false;          // 夹角 > ~32°，不是回退
+                }
+
+                locked = _lockDir;
+                return true;
+            }
+            catch { return false; }
+        }
+
+        // ---------- 瞄准时压制移动输入（时序正确的三条路）----------
+        //
+        // ⛔ 教训：在 MonoBehaviour.LateUpdate 里写 m_movementInput 是没用的 ——
+        //    游戏每帧在自己的 Update 开头从 InputSystem 重新刷新这个字段，
+        //    我们写的值只存在于"本帧所有消费都结束之后"，从来没被读到过（实测：日志里 move 依然非 0）。
+        //
+        // ✅ 正解是在【写入点】上拦截：InputSystem 的 action 回调早于 MonoBehaviour.Update 触发，
+        //    在 OnMove 写完之后立刻清零，游戏随后消费到的就是 0。
+        //    同时给属性 getter 也挂一个（万一游戏读的是属性而不是字段）。
+        private static void PatchInputSuppress(BepInEx.Logging.ManualLogSource log)
+        {
+            var t = AccessTools.TypeByName("CharacterInputPlayer");
+            if (t == null) { log?.LogError("[SPC] move-suppress: type not found"); return; }
+
+            var onMove = FindMethod(t, "OnMove");
+            if (onMove != null)
+            {
+                var pf = new HarmonyMethod(typeof(CombatPatches)
+                    .GetMethod(nameof(OnMovePostfix), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic));
+                if (pf.method != null)
+                {
+                    try { _harmony.Patch(onMove, postfix: pf); log?.LogInfo("[SPC] move-suppress patched: CharacterInputPlayer.OnMove"); }
+                    catch (Exception e) { log?.LogError("[SPC] move-suppress OnMove failed: " + e.Message); }
+                }
+            }
+            else log?.LogWarning("[SPC] move-suppress: OnMove not found");
+
+            var getMv = FindMethod(t, "get_MovementInput");
+            if (getMv != null)
+            {
+                var pf2 = new HarmonyMethod(typeof(CombatPatches)
+                    .GetMethod(nameof(MovementInputPostfix), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic));
+                if (pf2.method != null)
+                {
+                    try { _harmony.Patch(getMv, postfix: pf2); log?.LogInfo("[SPC] move-suppress patched: get_MovementInput"); }
+                    catch (Exception e) { log?.LogError("[SPC] move-suppress getter failed: " + e.Message); }
+                }
+            }
+        }
+
+        /// <summary>OnMove 写完立刻清零：这是输入回调，早于所有 MonoBehaviour.Update</summary>
+        private static void OnMovePostfix(object __instance)
+        {
+            try
+            {
+                var cfg = CombatPlugin.CfgAimLockLeftStick;
+                if (cfg == null || !cfg.Value) return;
+
+                var inst = Rewrap(_aimLockType, __instance);
+                if (inst == null) return;
+
+                // ★ 无论是否在瞄准，都要更新"最后一次真实输入"缓存。
+                //   之前只在瞄准时更新 ⇒ 缓存会停留在上一次瞄准期间的值，
+                //   退出瞄准时把陈旧方向写回去 ⇒ 出现"随机往反方向跑"（实测踩过）。
+                var curV = GetMemberTyped(_aimLockType, inst, "m_movementInput");
+                if (curV is Vector2 cv) _lastRawMove = cv;
+
+                var aimV = GetMemberTyped(_aimLockType, inst, "IsAiming");
+                if (!(aimV is bool) || !(bool)aimV) return;
+
+                SetMemberTyped(_aimLockType, inst, "m_movementInput", Vector2.zero);
+            }
+            catch { }
+        }
+
+        /// <summary>防守：游戏若读属性而非字段，这里直接返回零向量</summary>
+        private static void MovementInputPostfix(object __instance, ref Vector2 __result)
+        {
+            try
+            {
+                var cfg = CombatPlugin.CfgAimLockLeftStick;
+                if (cfg == null || !cfg.Value) return;
+
+                var inst = Rewrap(_aimLockType, __instance);
+                if (inst == null) return;
+                var aimV = GetMemberTyped(_aimLockType, inst, "IsAiming");
+                if (!(aimV is bool) || !(bool)aimV) return;
+
+                __result = Vector2.zero;
+            }
+            catch { }
+        }
+
+        // ---------- 瞄准时禁用移动输入 ----------
+        //
+        // 实测现象（用户描述，两条输入路径都成立）：
+        //   手柄：左摇杆与右摇杆【不同侧】时，瞄准角被挤到最高/最低位
+        //   键鼠：鼠标不动时 A/D 让瞄准线【水平镜像】（与地面夹角不变）；鼠标与移动反向时人物原地转向
+        // 共同点：瞄准方向被角色的左右翻转做了【镜像】。
+        //
+        // CharacterDirection 是 2D 精灵，朝向只有 Left/Right、靠 m_flipTranforms 翻转实现，
+        // 而朝向决策读的是 m_movementInput 的 x 符号。游戏在瞄准时本来就不允许移动，
+        // 所以 move 在这段时间只干两件坏事：
+        //   ① 决定角色左右翻转 ⇒ 瞄准方向被水平镜像（镜像后角度超出手臂可达范围 → 卡最高/最低位）
+        //   ② 右摇杆静止时被当作瞄准方向的回退值 ⇒ 直接污染瞄准
+        //
+        // ⇒ 直接把 move 置零，一次掐掉两个来源。
+        // ⛔ 不要写成 aim.normalized：模长 1.0 表示【全速移动】，会让依赖模长的逻辑以为玩家在冲刺
+        //    （上一版就是这么写错的，表现为"影响依然很烂"）。
+        // ⛔ 不要硬写 CharacterDirection.CurrentDirection：游戏每帧翻过去、我们每帧翻回来，
+        //    两边打架 ⇒ "人物一直原地转向"（也踩过）。
+        private static Vector2 _lastRawMove;   // 压制期间最后一次真实移动输入（退出瞄准时归还）
+        private static bool _moveSuppressed;   // 上一帧是否处于"压制"状态
+
+        private static void SuppressMovementWhileAiming(object inst, bool aiming)
+        {
+            try
+            {
+                var cfg = CombatPlugin.CfgAimLockLeftStick;
+                if (cfg == null || !cfg.Value) { RestoreRawMove(inst); return; }
+
+                if (aiming)
+                {
+                    _moveSuppressed = true;
+                    SetMemberTyped(_aimLockType, inst, "m_movementInput", Vector2.zero);
+                    return;
+                }
+
+                RestoreRawMove(inst);
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// 退出压制（松开瞄准 / 面板里关掉开关）：把缓存下来的真实移动输入还回去。
+        /// 否则 OnMove 不会再触发（按键状态没变），角色会一直不动直到重新按键 —— 实测踩过。
+        /// </summary>
+        private static void RestoreRawMove(object inst)
+        {
+            if (!_moveSuppressed) return;
+            _moveSuppressed = false;
+            try
+            {
+                if (_lastRawMove.sqrMagnitude < 0.0001f) return;
+
+                // ★ 只在这格还是 0 的时候才还回去。
+                //   如果游戏刚刚已经写入了新的非零输入（玩家退出瞄准后又按了键），
+                //   说明它已经接管，我们再覆盖就是拿旧值把新值打掉 —— 又是反向跑的来源。
+                var curV = GetMemberTyped(_aimLockType, inst, "m_movementInput");
+                if (curV is Vector2 cv && cv.sqrMagnitude > 0.0001f) return;
+
+                SetMemberTyped(_aimLockType, inst, "m_movementInput", _lastRawMove);
+            }
+            catch { }
+        }
+
+        // 兜底：IL2CPP 里 get_AimDirectionInput 这种一行 getter 很可能被编译器内联，
+        // 一旦内联，Harmony 的 detour 就打不进去（方法压根没被调用）。
+        // 所以另外每帧直接写 m_aimDirection —— 下游读的是字段，写字段不依赖调用链。
+        // 写在本帧 LateUpdate（此时游戏自己的 Update 都跑完了），下一帧生效，滞后 16ms，观感无感。
+        private static object _lockPlayer;
+        private static int _lockPlayerId;
+        private static float _lockNextRefresh;
+
+        public static void AimLockTickField()
+        {
+            try
+            {
+                var cfg = CombatPlugin.CfgAimLockLeftStick;
+                if (cfg == null || !cfg.Value) return;
+                if (_aimLockType == null) _aimLockType = AccessTools.TypeByName("CharacterInputPlayer");
+                if (_aimLockType == null) return;
+
+                if (_lockPlayer == null || Time.unscaledTime >= _lockNextRefresh)
+                {
+                    _lockNextRefresh = Time.unscaledTime + 3f;
+                    var o = UnityEngine.Object.FindFirstObjectByType(Il2CppType.From(_aimLockType));
+                    if (o == null) return;
+                    int id = o.GetInstanceID();
+                    if (_lockPlayer == null || id != _lockPlayerId)
+                    {
+                        _lockPlayer = Rewrap(_aimLockType, o);
+                        _lockPlayerId = id;
+                        _wasAiming = false;
+                        _lockValid = false;
+                        _hasLastMouse = false;
+                    }
+                }
+                if (_lockPlayer == null) return;
+
+                var aimV = GetMemberTyped(_aimLockType, _lockPlayer, "IsAiming");
+                bool aimingNow = aimV is bool ba && ba;
+
+                var curV = GetMemberTyped(_aimLockType, _lockPlayer, "m_aimDirection");
+                Vector2 cur = curV is Vector2 c ? c : Vector2.zero;
+
+                Vector2 locked;
+                bool over = TryComputeLock(_lockPlayer, cur, out locked);
+                if (over && SetMemberTyped(_aimLockType, _lockPlayer, "m_aimDirection", locked))
+                {
+                    if (!_lockLogged)
+                    {
+                        _lockLogged = true;
+                        CombatPlugin.Inst?.Log.LogInfo($"[SPC] aim-lock 生效(字段兜底): 锁定 ({_lockDir.x:0.00},{_lockDir.y:0.00})");
+                    }
+                    // 干预过程也要留痕：否则"没生效"和"生效了但被游戏改回去"在日志里长得一样
+                    if (Time.unscaledTime >= _nextLockLog)
+                    {
+                        _nextLockLog = Time.unscaledTime + 2f;
+                        CombatPlugin.Inst?.Log.LogInfo($"[SPC] aim-lock 干预: game=({cur.x:0.00},{cur.y:0.00}) → locked=({_lockDir.x:0.00},{_lockDir.y:0.00})");
+                    }
+                }
+
+                // 朝向跟随：用【修正后】的方向算，否则左摇杆能通过 move 间接把角色翻过去
+                // 瞄准时禁用移动输入：朝向不再被 A/D、左摇杆抢走，瞄准也不会被回退污染
+                SuppressMovementWhileAiming(_lockPlayer, aimingNow);
+            }
+            catch { }
+        }
+
+        // ---------- 辅助瞄准（自己实现）----------
+        // 落点 CharacterAiming.UpdateAim 的 Postfix：它内部算完 m_previousAimVector / m_aimInput 之后、
+        // 被瞄准线和开火消费之前。改这两个字段等价于"改最终瞄准方向"。
+        private static void PatchAimAssist(BepInEx.Logging.ManualLogSource log)
+        {
+            var t = AccessTools.TypeByName("CharacterAiming");
+            if (t == null) { log?.LogError("[SPC] aim-assist: CharacterAiming 缺失"); return; }
+
+            var m = FindMethod(t, "UpdateAim");
+            if (m == null) { log?.LogError("[SPC] aim-assist: UpdateAim 没找到"); return; }
+
+            var pre = new HarmonyMethod(typeof(CombatPatches)
+                .GetMethod(nameof(UpdateAimPrefix), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic));
+            if (pre.method == null) { log?.LogError("[SPC] aim-assist: UpdateAimPrefix 缺失"); return; }
+
+            try
+            {
+                // Prefix：在游戏算瞄准之前改输入方向。
+                // Postfix 试过，改 m_previousAimVector 下游不吃（force 时 perp 卡住不动）。
+                _harmony.Patch(m, prefix: pre);
+                log?.LogInfo("[SPC] aim-assist patched: CharacterAiming.UpdateAim (prefix)");
+            }
+            catch (Exception e) { log?.LogError("[SPC] aim-assist patch 失败: " + e.Message); }
+        }
+
+        private static void UpdateAimPrefix(object __instance) => AimAssist.OnUpdateAim(__instance);
+
         // ---------- 工具 ----------
+
+        /// <summary>按名字找方法：先走 AccessTools，再退回全类型扫描（应对重载/继承）</summary>
+        public static System.Reflection.MethodInfo FindMethodPublic(Type t, string name) => FindMethod(t, name);
 
         /// <summary>按名字找方法：先走 AccessTools，再退回全类型扫描（应对重载/继承）</summary>
         private static System.Reflection.MethodInfo FindMethod(Type t, string name)
@@ -1100,6 +1576,963 @@ namespace SilverPinesCombat
         }
     }
 
+    // ================= 手柄输入诊断 =================
+    // 目的：查清"左摇杆为什么会改变瞄准角度"。
+    // dump 只有类结构没有方法体（IL2CPP 没有 IL），读代码判断不了，只能运行时观测。
+    // 采样点（CharacterInputPlayer，字段名来自 dump.cs）：
+    //   m_movementInput     左摇杆（移动）
+    //   m_gamepadRawAimInput 右摇杆（瞄准）
+    //   m_aimDirection      合成后的瞄准方向
+    //   m_mouseAimPosition  鼠标位置（键鼠模式才动）
+    //   AimDirectionInput   属性：下游 CharacterAiming 实际消费的瞄准输入
+    // 对照 CharacterAiming 的 m_aimInput / PreviousAimVector，看改动发生在哪一层。
+    public static class GamepadDiag
+    {
+        private static Type _inType;                 // CharacterInputPlayer
+        private static Type _aimType;                // CharacterAiming
+        private static object _input;                // 重包装后的输入组件代理
+        private static object _aim;                  // 重包装后的瞄准组件代理
+        private static UnityEngine.Component _inputComp;
+        private static int _id;
+        private static float _next;
+        private static float _nextRefresh;
+        private static bool _typeWarned;
+        private static string _last;
+        private static float _lastPrint;
+        private static Type _dirType;      // CharacterDirection（只读采样朝向）
+        private static object _dirComp;
+
+        public static void Tick(float interval)
+        {
+            var log = CombatPlugin.Inst?.Log;
+            if (log == null) return;
+            if (CombatPlugin.CfgGpDiag != null && !CombatPlugin.CfgGpDiag.Value) return;
+
+            if (Time.unscaledTime < _next) return;
+            _next = Time.unscaledTime + interval;
+
+            if (!Resolve(log)) return;
+
+            try
+            {
+                var mv = CombatPatches.GetMemberTyped(_inType, _input, "m_movementInput");
+                var gp = CombatPatches.GetMemberTyped(_inType, _input, "m_gamepadRawAimInput");
+                var ad = CombatPatches.GetMemberTyped(_inType, _input, "m_aimDirection");
+                var mp = CombatPatches.GetMemberTyped(_inType, _input, "m_mouseAimPosition");
+                var adi = CombatPatches.GetMemberTyped(_inType, _input, "AimDirectionInput");
+                var isAim = CombatPatches.GetMemberTyped(_inType, _input, "IsAiming");
+                var turn = CombatPatches.GetMemberTyped(_inType, _input, "m_turnDisabled");
+
+                var aimIn = _aim == null ? null : CombatPatches.GetMemberTyped(_aimType, _aim, "m_aimInput");
+                var prev = _aim == null ? null : CombatPatches.GetMemberTyped(_aimType, _aim, "PreviousAimVector");
+
+                // 只读采样角色朝向：判断"瞄准时把 move 置零"之后，朝向还会不会跟着瞄准转
+                string face = "?";
+                try
+                {
+                    if (_dirType == null) _dirType = AccessTools.TypeByName("CharacterDirection");
+                    if (_dirType != null && _inputComp != null)
+                    {
+                        if (_dirComp == null)
+                        {
+                            var rd = _inputComp.gameObject.GetComponent(Il2CppType.From(_dirType));
+                            if (rd != null) _dirComp = CombatPatches.Rewrap(_dirType, rd);
+                        }
+                        var fv = CombatPatches.GetMemberTyped(_dirType, _dirComp, "CurrentDirection");
+                        if (fv != null)
+                        {
+                            int fi = Convert.ToInt32(fv);
+                            face = fi == 1 ? "R" : fi == 2 ? "L" : "0";
+                        }
+                    }
+                }
+                catch { }
+
+                string line = "[SPC][GP] move=" + Vs(mv) + " rawAim=" + Vs(gp) + " aimDir=" + Vs(ad)
+                            + " mouse=" + Vs(mp) + " | AimDirInput=" + Vs(adi) + " IsAiming=" + isAim
+                            + " turnDis=" + turn + " face=" + face
+                            + " | aim.m_aimInput=" + Vs(aimIn) + " PrevAimVec=" + Vs(prev);
+
+                // 值没变化就别刷屏；但每 5 秒至少打一次，证明还活着
+                if (line == _last && Time.unscaledTime - _lastPrint < 5f) return;
+                _last = line;
+                _lastPrint = Time.unscaledTime;
+                log.LogInfo(line);
+            }
+            catch (Exception e) { log.LogWarning("[SPC][GP] diag failed: " + e.Message); }
+        }
+
+        private static bool Resolve(BepInEx.Logging.ManualLogSource log)
+        {
+            try
+            {
+                if (_inType == null) _inType = AccessTools.TypeByName("CharacterInputPlayer");
+                if (_aimType == null) _aimType = AccessTools.TypeByName("CharacterAiming");
+                if (_inType == null)
+                {
+                    if (!_typeWarned)
+                    {
+                        _typeWarned = true;
+                        log?.LogWarning("[SPC][GP] CharacterInputPlayer 类型没找到");
+                    }
+                    return false;
+                }
+
+                if (_input != null && Time.unscaledTime < _nextRefresh) return true;
+                _nextRefresh = Time.unscaledTime + 3f;
+
+                var o = UnityEngine.Object.FindFirstObjectByType(Il2CppType.From(_inType));
+                if (o == null) return false;
+
+                int id = o.GetInstanceID();
+                if (_input == null || id != _id)
+                {
+                    _inputComp = o.TryCast<UnityEngine.Component>();
+                    _input = Rewrap(_inType, o);
+                    _aim = null;
+                    _id = id;
+                    _last = null;
+                    log?.LogInfo("[SPC][GP] 绑定玩家输入组件 id=" + id
+                        + " on=" + (_inputComp == null ? "?" : _inputComp.gameObject.name));
+                }
+
+                if (_aim == null && _aimType != null && _inputComp != null)
+                {
+                    object raw = _inputComp.gameObject.GetComponent(Il2CppType.From(_aimType));
+                    if (raw == null) raw = _inputComp.gameObject.GetComponentInChildren(Il2CppType.From(_aimType), true);
+                    if (raw != null) _aim = Rewrap(_aimType, raw);
+                }
+                return _input != null;
+            }
+            catch (Exception e)
+            {
+                log?.LogWarning("[SPC][GP] resolve failed: " + e.Message);
+                return false;
+            }
+        }
+
+        /// <summary>按真实类型重新包装代理：IL2CPP 代理的 GetType() 返回基类，直接反射读不到游戏类字段</summary>
+        private static object Rewrap(Type t, object o) => CombatPatches.Rewrap(t, o);
+
+        private static string Vs(object o)
+        {
+            if (o == null) return "null";
+            try
+            {
+                if (o is UnityEngine.Vector2 v2) return "(" + v2.x.ToString("0.00") + "," + v2.y.ToString("0.00") + ")";
+                if (o is UnityEngine.Vector3 v3) return "(" + v3.x.ToString("0.00") + "," + v3.y.ToString("0.00") + "," + v3.z.ToString("0.00") + ")";
+            }
+            catch { }
+            return o.ToString();
+        }
+    }
+
+    // ================= 背包扩容 =================
+    //
+    // 数据层（dump 实测）：
+    //   PlayerMainInventory : Inventory（ScriptableObject，不是场景组件）
+    //     m_baseInventorySize  (Vector2Int)          基础尺寸（宽×高）
+    //     m_inventoryUpgrades  (List<ItemInstance>)  已购买的扩容道具
+    //     InventorySize        (override get)        实际尺寸——运行时算出来的，不一定直接等于 base
+    //     IsSlotLocked(pos)    (override)            某个格子是否锁着
+    //   InventoryUpgradeItemDefinition.m_addedSlots = 每个升级道具加多少格
+    //
+    // UI 层：InventoryPanel 有 m_inventoryItemCellPrefab + m_expandingBackground + m_unlockFlashEffectTemplate
+    //   ⇒ 格子是动态生成的（还专门有"解锁新格子"的闪光动效），所以容量变了有机会跟着长 —— 待实测。
+    //
+    // 获取路径：玩家 GameObject 上的 CharacterInventory.Inventory
+    public static class BagTweak
+    {
+        private static Type _charInvType;   // CharacterInventory
+        private static Type _invType;       // PlayerMainInventory
+        private static object _inv;         // PlayerMainInventory 代理
+        private static float _nextResolve;
+        private static string _info = "背包：未解析";
+        private static bool _warned;
+
+        public static string Info()
+        {
+            Resolve();
+            return _info;
+        }
+
+        public static void Resolve()
+        {
+            if (Time.unscaledTime < _nextResolve) return;
+            _nextResolve = Time.unscaledTime + 2f;
+            try
+            {
+                if (_charInvType == null) _charInvType = AccessTools.TypeByName("CharacterInventory");
+                if (_invType == null) _invType = AccessTools.TypeByName("PlayerMainInventory");
+                if (_charInvType == null || _invType == null)
+                {
+                    if (!_warned) { _warned = true; CombatPlugin.Inst?.Log.LogWarning("[SPC] bag: 类型没找到"); }
+                    _info = "背包：类型未找到";
+                    return;
+                }
+
+                var o = UnityEngine.Object.FindFirstObjectByType(Il2CppType.From(_charInvType));
+                if (o == null) { _info = "背包：玩家未就绪"; return; }
+
+                var proxy = CombatPatches.Rewrap(_charInvType, o);
+                var invObj = CombatPatches.GetMemberTyped(_charInvType, proxy, "Inventory");
+                if (invObj == null) { _info = "背包：Inventory 读不到"; return; }
+
+                _inv = CombatPatches.Rewrap(_invType, invObj);
+
+                var size = CombatPatches.GetMemberTyped(_invType, _inv, "InventorySize");
+                var bs = CombatPatches.GetMemberTyped(_invType, _inv, "m_baseInventorySize");
+                _info = "尺寸 " + V2I(size) + "  基础 " + V2I(bs);
+            }
+            catch (Exception e) { _info = "背包：解析异常 " + e.Message; }
+        }
+
+        /// <summary>把基础尺寸加 rows 行，并打出 InventorySize 的前后变化（用于判断 UI/逻辑是否跟着变）</summary>
+        public static void AddRows(int rows)
+        {
+            try
+            {
+                Resolve();
+                if (_inv == null) { Log("扩容失败：背包未解析"); return; }
+
+                var bsV = CombatPatches.GetMemberTyped(_invType, _inv, "m_baseInventorySize");
+                if (!(bsV is Vector2Int bs))
+                {
+                    Log("扩容失败：m_baseInventorySize 类型不符 " + (bsV == null ? "null" : bsV.GetType().Name));
+                    return;
+                }
+
+                var before = CombatPatches.GetMemberTyped(_invType, _inv, "InventorySize");
+                var nb = new Vector2Int(bs.x, bs.y + rows);
+                bool ok = CombatPatches.SetMemberTyped(_invType, _inv, "m_baseInventorySize", nb);
+                _nextResolve = 0f;   // 立刻重算 Info
+                var after = CombatPatches.GetMemberTyped(_invType, _inv, "InventorySize");
+
+                Log($"扩容尝试: base {V2I(bs)} → {V2I(nb)}（写入={ok}）| InventorySize {V2I(before)} → {V2I(after)}");
+            }
+            catch (Exception e) { Log("扩容异常: " + e.Message); }
+        }
+
+        // ---------- 配置驱动的自动应用 ----------
+        // 用【增量】而不是绝对基准：InventorySize = base + 已购升级道具，
+        // 所以绝对基准会把玩家后来正常买到的扩容道具覆盖掉。
+        private static int _appliedRows = int.MinValue;   // 上次应用到的行数（MinValue = 还没应用过）
+        private static string _lastMsg = "";
+
+        public static void Tick()
+        {
+            var cfg = CombatPlugin.CfgBagExtraRows;
+            if (cfg == null) return;
+
+            Resolve();
+            if (_inv == null) return;
+
+            int want = Mathf.Clamp(cfg.Value, 0, 10);
+            if (_appliedRows == int.MinValue) _appliedRows = 0;   // 首次视为"已应用 0 行"
+            int delta = want - _appliedRows;
+            if (delta == 0) return;                                // 配置没变 ⇒ 不碰，避免覆盖游戏内正常扩容
+
+            try
+            {
+                var bsV = CombatPatches.GetMemberTyped(_invType, _inv, "m_baseInventorySize");
+                if (!(bsV is Vector2Int bs)) return;
+
+                // ---- 缩容保护 ----
+                // 缩容会让"超出新容量"的物品留在非法位置。游戏 UI 在移动/旋转这类物品时会卡死：
+                // 目标位置越界 ⇒ 移动状态机无法退出 ⇒ 之后所有按键（含 ESC）全部无响应，只能大退。
+                // 挡在操作之前，而不是事后警告玩家。
+                if (delta < 0)
+                {
+                    var sizeV = CombatPatches.GetMemberTyped(_invType, _inv, "InventorySize");
+                    int targetRows = (sizeV is Vector2Int sz ? sz.y : 0) + delta;
+                    int bad = CountItemsBeyondRow(targetRows);
+                    if (bad != 0)
+                    {
+                        // bad < 0：物品列表读不到 ⇒ 同样拒绝（宁可不让缩，也不制造卡死状态）
+                        string msg = bad < 0
+                            ? "无法读取物品列表，已取消缩容"
+                            : $"额外行还有 {bad} 件物品，先清空再缩容";
+                        if (_lastMsg != msg)   // 只在变化时打日志，否则每次 Tick 都会重试并刷屏
+                        {
+                            _lastMsg = msg;
+                            Log("[缩容被拒绝] " + msg);
+                        }
+                        // 把配置值回滚到"实际生效的行数"：否则面板会显示一个没落地的数字，
+                        // 玩家看到"额外 1 行"但实际还是 3 行，会以为功能坏了。
+                        if (cfg.Value != _appliedRows)
+                        {
+                            try { cfg.Value = _appliedRows; } catch { }
+                        }
+                        return;   // 注意：不动 _appliedRows，等玩家清空后再点
+                    }
+                }
+
+                var target = new Vector2Int(bs.x, Mathf.Max(1, bs.y + delta));
+                if (CombatPatches.SetMemberTyped(_invType, _inv, "m_baseInventorySize", target))
+                {
+                    _appliedRows = want;
+                    _lastMsg = "";
+                    _nextResolve = 0f;
+                    Log($"应用配置 {want} 行: base {V2I(bs)} → {V2I(target)}");
+                }
+            }
+            catch (Exception e) { Log("自动应用异常: " + e.Message); }
+        }
+
+        /// <summary>
+        /// 统计"占用行超出 targetRows"的物品数量。
+        /// 返回 -1 = 读不到（调用方应保守处理）。
+        /// 物品占位：ItemInstance.m_itemGridPosition + 尺寸（旋转时宽高互换），多格物品按整个占位算。
+        /// </summary>
+        private static int CountItemsBeyondRow(int targetRows)
+        {
+            try
+            {
+                if (targetRows < 1) return -1;
+
+                object items = CombatPatches.GetMemberTyped(_invType, _inv, "m_items");
+                if (items == null) return -1;
+
+                var cV = CombatPatches.GetMember(items, "Count");
+                if (cV == null) return -1;
+                int count = Convert.ToInt32(cV);
+
+                var listType = items.GetType();
+                var idx = listType.GetProperty("Item",
+                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                if (idx == null) return -1;
+
+                var itemType = AccessTools.TypeByName("ItemInstance");
+                var defType = AccessTools.TypeByName("ItemDefinition");
+                if (itemType == null || defType == null) return -1;
+
+                int bad = 0;
+                for (int i = 0; i < count; i++)
+                {
+                    object raw;
+                    try { raw = idx.GetValue(items, new object[] { i }); }
+                    catch { return -1; }
+                    if (raw == null) continue;
+
+                    var item = CombatPatches.Rewrap(itemType, raw);
+                    if (item == null) continue;
+
+                    var posV = CombatPatches.GetMemberTyped(itemType, item, "m_itemGridPosition");
+                    if (!(posV is Vector2Int pos)) continue;
+
+                    var rotV = CombatPatches.GetMemberTyped(itemType, item, "m_itemRotated");
+                    bool rotated = rotV is bool rb && rb;
+
+                    var defV = CombatPatches.GetMemberTyped(itemType, item, "m_itemDefinition");
+                    if (defV == null) continue;
+                    var def = CombatPatches.Rewrap(defType, defV);
+                    var sizeV = CombatPatches.GetMemberTyped(defType, def, "m_itemSize");
+                    if (!(sizeV is Vector2Int size)) continue;
+
+                    int h = rotated ? size.x : size.y;      // 旋转时宽高互换
+                    if (h < 1) h = 1;
+                    if (pos.y + h > targetRows) bad++;
+                }
+                return bad;
+            }
+            catch { return -1; }
+        }
+
+        /// <summary>面板按钮：直接改配置值，Tick 会负责落地</summary>
+        public static void ChangeRows(int delta)
+        {
+            var cfg = CombatPlugin.CfgBagExtraRows;
+            if (cfg == null) return;
+            int v = Mathf.Clamp(cfg.Value + delta, 0, 10);
+            if (v != cfg.Value) cfg.Value = v;
+        }
+
+        public static void Dump()
+        {
+            try
+            {
+                Resolve();
+                if (_inv == null) { Log("dump: 背包未解析"); return; }
+
+                var size = CombatPatches.GetMemberTyped(_invType, _inv, "InventorySize");
+                var bs = CombatPatches.GetMemberTyped(_invType, _inv, "m_baseInventorySize");
+                var ups = CombatPatches.GetMemberTyped(_invType, _inv, "m_inventoryUpgrades");
+                var cnt = ups == null ? null : CombatPatches.GetMember(ups, "Count");
+                var lastRow = CombatPatches.GetMemberTyped(_invType, _inv, "GetAvailableLastRowSlots");
+
+                Log($"dump: InventorySize={V2I(size)} base={V2I(bs)} upgrades={cnt ?? "?"} lastRowSlots={lastRow ?? "?"}");
+            }
+            catch (Exception e) { Log("dump 异常: " + e.Message); }
+        }
+
+        private static void Log(string msg) => CombatPlugin.Inst?.Log.LogInfo("[SPC][BAG] " + msg);
+
+        public static string LastMsg => _lastMsg;
+
+        private static string V2I(object o)
+        {
+            if (o is Vector2Int v) return v.x + "×" + v.y;
+            return o == null ? "null" : o.ToString();
+        }
+    }
+
+    // ================= 辅助瞄准：落点探测 =================
+    //
+    // 目的：在写磁吸之前，先回答三个只能靠实测的问题。
+    //   ① 游戏自己的 CharacterAiming.ApplyAimAssist(Vector2)→Vector2 到底有没有被调用？
+    //      —— 如果调用了，它就是最理想的落点（Postfix 改返回值 = 在所有下游消费之前介入）；
+    //         如果没调用（或被内联导致 detour 打不进去），就只能自己找落点。
+    //   ② AimTargetSet（游戏维护的可瞄准目标集合）里到底有几个目标？
+    //   ③ 敌人身上的 DamageModifierZone 有没有 CountsAsWeakpoint=true，位置/半径多少？
+    //
+    // 只在面板点按钮时采样 2 秒，平时完全零开销（patch 的 Prefix/Postfix 只做一次赋值 + 计数）。
+    public static class AimAssistProbe
+    {
+        private static bool _running;
+        private static float _until;
+        private static int _calls;
+        private static float _maxDelta;
+        private static Vector2 _lastIn, _lastOut;
+
+        public static void PatchProbe(Harmony harmony, BepInEx.Logging.ManualLogSource log)
+        {
+            try
+            {
+                var t = AccessTools.TypeByName("CharacterAiming");
+                if (t == null) { log?.LogWarning("[AIMDIAG] CharacterAiming 类型缺失"); return; }
+
+                var m = CombatPatches.FindMethodPublic(t, "ApplyAimAssist");
+                if (m == null) { log?.LogWarning("[AIMDIAG] ApplyAimAssist 没找到"); return; }
+
+                var pre = new HarmonyMethod(typeof(AimAssistProbe)
+                    .GetMethod(nameof(Pre), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic));
+                var post = new HarmonyMethod(typeof(AimAssistProbe)
+                    .GetMethod(nameof(Post), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic));
+                if (pre.method == null || post.method == null) { log?.LogWarning("[AIMDIAG] probe 方法缺失"); return; }
+
+                harmony.Patch(m, prefix: pre, postfix: post);
+                log?.LogInfo("[AIMDIAG] ApplyAimAssist 已挂探针");
+            }
+            catch (Exception e) { log?.LogError("[AIMDIAG] patch 失败: " + e.Message); }
+        }
+
+        private static void Pre(Vector2 __0) { _lastIn = __0; }
+
+        private static void Post(Vector2 __result)
+        {
+            if (!_running) return;
+            _calls++;
+            _lastOut = __result;
+            float d = (__result - _lastIn).magnitude;
+            if (d > _maxDelta) _maxDelta = d;
+        }
+
+        public static void Start(float sec = 2f)
+        {
+            _running = true;
+            _until = Time.unscaledTime + sec;
+            _calls = 0;
+            _maxDelta = 0f;
+            CombatPlugin.Inst?.Log.LogInfo("[AIMDIAG] 开始采样 " + sec + "s：请瞄准敌人（顺便在弱点附近晃一下）");
+        }
+
+        public static void Tick()
+        {
+            if (!_running || Time.unscaledTime < _until) return;
+            _running = false;
+
+            var log = CombatPlugin.Inst?.Log;
+            if (log == null) return;
+
+            log.LogInfo($"[AIMDIAG] ApplyAimAssist 调用 {_calls} 次 / 采样窗口；最大修正量 {_maxDelta:0.0000}");
+            if (_calls == 0)
+                log.LogInfo("[AIMDIAG] ⇒ 结论：当前输入路径下它压根没被调用（或被内联、patch 没进去）");
+            else
+                log.LogInfo($"[AIMDIAG] 最后一帧 in=({_lastIn.x:0.00},{_lastIn.y:0.00}) out=({_lastOut.x:0.00},{_lastOut.y:0.00})");
+
+            log.LogInfo("[AIMDIAG] " + TargetInfo());
+            log.LogInfo("[AIMDIAG] " + ZoneInfo());
+        }
+
+        /// <summary>AimTargetSet 里现在有几个可瞄准目标</summary>
+        private static string TargetInfo()
+        {
+            try
+            {
+                var aimT = AccessTools.TypeByName("CharacterAiming");
+                if (aimT == null) return "AimTargetSet: 类型缺失";
+
+                var o = UnityEngine.Object.FindFirstObjectByType(Il2CppType.From(aimT));
+                if (o == null) return "AimTargetSet: 玩家未就绪";
+
+                var aim = CombatPatches.Rewrap(aimT, o);
+                var setObj = CombatPatches.GetMemberTyped(aimT, aim, "m_aimTargetsSet");
+                if (setObj == null) return "AimTargetSet: 引用为空";
+
+                var items = CombatPatches.GetMember(setObj, "m_items");
+                if (items == null) return "AimTargetSet: m_items 读不到";
+
+                var cV = CombatPatches.GetMember(items, "Count");
+                return "AimTargetSet 目标数=" + (cV ?? "?");
+            }
+            catch (Exception e) { return "AimTargetSet 读取异常: " + e.Message; }
+        }
+
+        /// <summary>场景里有多少 DamageModifierZone，其中多少是弱点，前几个在哪</summary>
+        private static string ZoneInfo()
+        {
+            try
+            {
+                var zoneT = AccessTools.TypeByName("DamageModifierZone");
+                if (zoneT == null) return "弱点区域: 类型缺失";
+
+                var all = UnityEngine.Object.FindObjectsOfType(Il2CppType.From(zoneT));
+                if (all == null) return "弱点区域: 查询失败";
+
+                int total = all.Length, weak = 0, shown = 0;
+                var sb = new System.Text.StringBuilder();
+                sb.Append("DamageModifierZone=").Append(total).Append("，其中弱点=");
+
+                var comps = new System.Collections.Generic.List<string>();
+                foreach (var c in all)
+                {
+                    try
+                    {
+                        var comp = c.TryCast<UnityEngine.Component>();
+                        if (comp == null) continue;
+                        var z = CombatPatches.Rewrap(zoneT, comp);
+                        var wV = CombatPatches.GetMemberTyped(zoneT, z, "CountsAsWeakpoint");
+                        bool isWeak = wV is bool wb && wb;
+                        if (!isWeak) continue;
+                        weak++;
+
+                        if (shown < 3)
+                        {
+                            shown++;
+                            var rV = CombatPatches.GetMemberTyped(zoneT, z, "Radius");
+                            float r = rV is float rf ? rf : -1f;
+                            var pos = comp.transform.position;
+                            comps.Add($"[{shown}] \"{comp.gameObject.name}\" pos=({pos.x:0.0},{pos.y:0.0}) r={r:0.00}");
+                        }
+                    }
+                    catch { }
+                }
+                sb.Append(weak);
+                if (comps.Count > 0) sb.Append("  ").Append(string.Join(" | ", comps));
+                return sb.ToString();
+            }
+            catch (Exception e) { return "弱点区域读取异常: " + e.Message; }
+        }
+    }
+
+    // ================= 临时：刷怪工具（只为测试辅助瞄准，进正式版前会删） =================
+    //
+    // 不自己造 prefab（那要过 Addressables），直接复用场景里现成的刷怪点：
+    //   CharacterSpawner: m_prefabsToSpawn / m_maxActiveSpawns / m_maxTotalSpawns / Active(可写)
+    //   EnemyWave:        public void StartWave()  ← 波次刷怪，直接调
+    public static class SpawnerTool
+    {
+        public static string InputName = "";
+        public static readonly System.Collections.Generic.List<string> Names = new System.Collections.Generic.List<string>();
+
+        // 从 383 条可生成对象里筛出来的敌人候选（完整列表翻页找太痛苦，先放最前面）。
+        // 名字来自游戏自己的 SpawnAutoComplete 输出，不是猜的。
+        private static readonly string[] EnemyCandidates =
+        {
+            "skitterling", "sniper", "shroud", "meatball", "meatballv2",
+            "headcrawler", "legacydog", "rat", "faceless", "torso_umbral",
+            "dog_barker", "billybass", "pursuer_fight1", "pursuer_fight2", "npc_pursuer",
+        };
+
+        private static Type SpawnerType() => AccessTools.TypeByName("CharacterSpawner");
+        private static Type WaveType() => AccessTools.TypeByName("EnemyWave");
+
+        /// <summary>
+        /// 列出游戏 debug 命令里所有可生成的对象，同时缓存到 Names 供面板分页显示。
+        /// GameDebugCommands 自带 SpawnAutoComplete(string) → string[]，
+        /// 这是最靠谱的入口：不用自己过 Addressables 加载 prefab。
+        /// </summary>
+        public static void RefreshNames()
+        {
+            Names.Clear();
+            var log = CombatPlugin.Inst?.Log;
+            try
+            {
+                var t = AccessTools.TypeByName("GameDebugCommands");
+                if (t == null) { log?.LogWarning("[SPAWN] GameDebugCommands 缺失"); return; }
+
+                var m = CombatPatches.FindMethodPublic(t, "SpawnAutoComplete");
+                if (m == null) { log?.LogWarning("[SPAWN] SpawnAutoComplete 缺失"); return; }
+
+                var arr = m.Invoke(null, new object[] { "" });
+                if (arr == null) { log?.LogWarning("[SPAWN] 返回 null（可能没有配可生成对象）"); return; }
+
+                var lenV = CombatPatches.GetMember(arr, "Length");
+                int len = lenV == null ? 0 : Convert.ToInt32(lenV);
+                var idx = arr.GetType().GetProperty("Item",
+                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+
+                for (int i = 0; i < len; i++)
+                {
+                    string s = null;
+                    try
+                    {
+                        var v = idx?.GetValue(arr, new object[] { i });
+                        s = v as string ?? v?.ToString();
+                    }
+                    catch { }
+                    if (!string.IsNullOrEmpty(s) && !Names.Contains(s)) Names.Add(s);
+                }
+
+                // 敌人候选提到最前面（即使完整列表里没有也放上，方便试错；Contains 去重保证不重复）
+                var priority = new System.Collections.Generic.List<string>();
+                foreach (var n in EnemyCandidates) priority.Add(n);
+                foreach (var n in Names)
+                    if (!priority.Contains(n)) priority.Add(n);
+                Names.Clear();
+                Names.AddRange(priority);
+
+                log?.LogInfo($"[SPAWN] 可生成对象 {Names.Count} 个：");
+                for (int i = 0; i < Names.Count; i++) log?.LogInfo($"[SPAWN]   {i}: {Names[i]}");
+            }
+            catch (Exception e) { log?.LogError("[SPAWN] 列出异常: " + e.Message); }
+        }
+
+        public static void ListSpawnables() => RefreshNames();
+
+        public static void SpawnByName(string name)
+        {
+            var log = CombatPlugin.Inst?.Log;
+            try
+            {
+                if (string.IsNullOrWhiteSpace(name)) { log?.LogWarning("[SPAWN] 名字为空"); return; }
+
+                var t = AccessTools.TypeByName("GameDebugCommands");
+                if (t == null) { log?.LogWarning("[SPAWN] GameDebugCommands 缺失"); return; }
+
+                var o = UnityEngine.Object.FindFirstObjectByType(Il2CppType.From(t));
+                if (o == null) { log?.LogWarning("[SPAWN] 当前场景里没有 GameDebugCommands 实例"); return; }
+
+                var m = CombatPatches.FindMethodPublic(t, "SpawnObject");
+                if (m == null) { log?.LogWarning("[SPAWN] SpawnObject 缺失"); return; }
+
+                var inst = CombatPatches.Rewrap(t, o);
+                m.Invoke(inst, new object[] { name.Trim() });
+                log?.LogInfo($"[SPAWN] 已调用 SpawnObject(\"{name.Trim()}\")");
+            }
+            catch (Exception e) { log?.LogError("[SPAWN] 生成异常: " + e.Message); }
+        }
+
+        public static void Dump()
+        {
+            var log = CombatPlugin.Inst?.Log;
+            try
+            {
+                var sT = SpawnerType();
+                if (sT != null)
+                {
+                    var all = UnityEngine.Object.FindObjectsOfType(Il2CppType.From(sT));
+                    log?.LogInfo($"[SPAWN] CharacterSpawner = {all.Length}");
+                    int i = 0;
+                    foreach (var c in all)
+                    {
+                        var comp = c.TryCast<UnityEngine.Component>();
+                        if (comp == null) continue;
+                        var p = CombatPatches.Rewrap(sT, comp);
+                        var prefabs = CombatPatches.GetMemberTyped(sT, p, "m_prefabsToSpawn");
+                        var nV = prefabs == null ? null : CombatPatches.GetMember(prefabs, "Length");
+                        var maxA = CombatPatches.GetMemberTyped(sT, p, "m_maxActiveSpawns");
+                        var maxT = CombatPatches.GetMemberTyped(sT, p, "m_maxTotalSpawns");
+                        var act = CombatPatches.GetMemberTyped(sT, p, "Active");
+                        var pos = comp.transform.position;
+                        log?.LogInfo($"[SPAWN]   [{++i}] \"{comp.gameObject.name}\" pos=({pos.x:0.0},{pos.y:0.0})"
+                            + $" prefabs={nV ?? "?"} maxActive={maxA ?? "?"} maxTotal={maxT ?? "?"} Active={act ?? "?"}");
+                    }
+                }
+
+                var wT = WaveType();
+                if (wT != null)
+                {
+                    var all = UnityEngine.Object.FindObjectsOfType(Il2CppType.From(wT));
+                    log?.LogInfo($"[SPAWN] EnemyWave = {all.Length}");
+                    int j = 0;
+                    foreach (var c in all)
+                    {
+                        var comp = c.TryCast<UnityEngine.Component>();
+                        if (comp == null) continue;
+                        var pos = comp.transform.position;
+                        log?.LogInfo($"[SPAWN]   [{++j}] \"{comp.gameObject.name}\" pos=({pos.x:0.0},{pos.y:0.0})");
+                    }
+                }
+
+                if (sT == null && wT == null) log?.LogWarning("[SPAWN] 两种刷怪类都没找到");
+            }
+            catch (Exception e) { log?.LogError("[SPAWN] dump 异常: " + e.Message); }
+        }
+
+        public static void Activate()
+        {
+            var log = CombatPlugin.Inst?.Log;
+            try
+            {
+                int nSpawner = 0, nWave = 0;
+
+                var sT = SpawnerType();
+                if (sT != null)
+                {
+                    var all = UnityEngine.Object.FindObjectsOfType(Il2CppType.From(sT));
+                    foreach (var c in all)
+                    {
+                        var comp = c.TryCast<UnityEngine.Component>();
+                        if (comp == null) continue;
+                        var p = CombatPatches.Rewrap(sT, comp);
+
+                        // 重置总上限：已经刷满的 spawner 靠这个才能继续刷
+                        CombatPatches.SetMemberTyped(sT, p, "m_maxTotalSpawns", 999);
+                        CombatPatches.SetMemberTyped(sT, p, "m_maxActiveSpawns", 12);
+                        if (CombatPatches.SetMemberTyped(sT, p, "Active", true)) nSpawner++;
+                    }
+                }
+
+                var wT = WaveType();
+                if (wT != null)
+                {
+                    var m = CombatPatches.FindMethodPublic(wT, "StartWave");
+                    var all = UnityEngine.Object.FindObjectsOfType(Il2CppType.From(wT));
+                    foreach (var c in all)
+                    {
+                        var comp = c.TryCast<UnityEngine.Component>();
+                        if (comp == null) continue;
+                        var w = CombatPatches.Rewrap(wT, comp);
+                        try { m?.Invoke(w, null); nWave++; } catch { }
+                    }
+                }
+
+                log?.LogInfo($"[SPAWN] 已激活：CharacterSpawner {nSpawner} 个、EnemyWave {nWave} 个。"
+                    + "如果没反应，说明当前场景没有刷怪点（去有敌人的关卡试试）");
+            }
+            catch (Exception e) { log?.LogError("[SPAWN] activate 异常: " + e.Message); }
+        }
+    }
+
+    // ================= 辅助瞄准（自己实现） =================
+    //
+    // 为什么不用游戏自带的：实测 AimTargetSet 目标数恒为 0 —— 用 debug 命令刷出来的敌人
+    // （能移动/攻击/受伤/死亡，功能完全正常）**不会注册进这个集合**，所以
+    // CharacterAiming.ApplyAimAssist 压根没被调用（探针实测 0 次）。
+    //
+    // 落点：CharacterAiming.UpdateAim 的 Postfix。
+    //   它内部算出 m_previousAimVector（世界方向，瞄准线和子弹都用它）和 m_aimInput（局部方向，手臂姿态用），
+    //   我们在这之后把方向往弱点拉 —— 时机在"算完"且"被消费之前"。
+    // ⛔ 不能写 CharacterInputPlayer.m_aimDirection：游戏每帧重算，写了立刻被覆盖（实测踩过）。
+    //
+    // 目标：DamageModifierZone（CountsAsWeakpoint=true，挂在敌人身上），实测半径 0.18~0.20m。
+    // 判据用【垂直距离】而非角度：8 米外 5° 就是 0.7 米，而弱点半径才 0.2 米 ——
+    // 角度判据在远处会"吸空气"，垂直距离的吸附范围是恒定的物理宽度。
+    public static class AimAssist
+    {
+        private static Type _aimType, _inputType, _zoneType, _dirType, _healthType;
+        private static object _input;
+        private static int _playerGo;
+        private static bool _warned;
+        private static bool _logged;
+        private static Vector2 _lastAim;
+        private static float _lastAimTime;
+        private static bool _hasLastAim;
+        private static float _nextLog;
+        private static float _nextDbg;
+
+        /// <summary>诊断节流：每个 return 分支都留一行，否则"没生效"和"没走到"分不清</summary>
+        private static void Dbg(string msg)
+        {
+            if (Time.unscaledTime < _nextDbg) return;
+            _nextDbg = Time.unscaledTime + 1f;
+            CombatPlugin.Inst?.Log.LogInfo("[SPC] aim-assist: " + msg);
+        }
+
+        /// <summary>调试用：这段时间内把吸附强度强制拉到 1.0（直接锁到目标），验证链路通不通</summary>
+        public static float ForceUntil = -1f;
+
+        private struct Weak
+        {
+            public UnityEngine.Component Comp;
+            public Vector2 Pos;
+            public float Radius;
+        }
+        private static readonly System.Collections.Generic.List<Weak> _targets = new System.Collections.Generic.List<Weak>();
+        private static float _nextRefresh;
+
+        public static void RefreshTargets()
+        {
+            _targets.Clear();
+            if (_zoneType == null) _zoneType = AccessTools.TypeByName("DamageModifierZone");
+            if (_healthType == null) _healthType = AccessTools.TypeByName("CharacterHealth");
+            if (_zoneType == null) return;
+
+            try
+            {
+                var all = UnityEngine.Object.FindObjectsOfType(Il2CppType.From(_zoneType));
+                foreach (var c in all)
+                {
+                    var comp = c.TryCast<UnityEngine.Component>();
+                    if (comp == null) continue;
+                    var z = CombatPatches.Rewrap(_zoneType, comp);
+
+                    var wV = CombatPatches.GetMemberTyped(_zoneType, z, "CountsAsWeakpoint");
+                    if (!(wV is bool wb) || !wb) continue;
+
+                    // 必须挂在角色身上 —— 排除场景里的固定可破坏物
+                    if (_healthType != null && comp.GetComponentInParent(Il2CppType.From(_healthType)) == null) continue;
+
+                    var rV = CombatPatches.GetMemberTyped(_zoneType, z, "Radius");
+                    float r = rV is float rf ? rf : 0.2f;
+
+                    var p = comp.transform.position;
+                    _targets.Add(new Weak { Comp = comp, Pos = new Vector2(p.x, p.y), Radius = r });
+                }
+            }
+            catch { }
+        }
+
+        public static void OnUpdateAim(object aimComp)
+        {
+            var cfg = CombatPlugin.CfgAimAssistEnabled;
+            if (cfg == null || !cfg.Value) return;
+
+            try
+            {
+                if (_aimType == null) _aimType = AccessTools.TypeByName("CharacterAiming");
+                if (_aimType == null || aimComp == null) return;
+
+                if (Time.unscaledTime >= _nextRefresh) { _nextRefresh = Time.unscaledTime + 0.4f; RefreshTargets(); }
+                if (_targets.Count == 0) { Dbg("弱点目标=0（没刷怪 / 怪身上没有 CountsAsWeakpoint 区域）"); return; }
+
+                var comp = aimComp as UnityEngine.Component;
+                if (comp == null) return;
+
+                if (_inputType == null) _inputType = AccessTools.TypeByName("CharacterInputPlayer");
+                if (_inputType == null) return;
+
+                int goId = comp.gameObject.GetInstanceID();
+                if (_input == null || _playerGo != goId)
+                {
+                    var raw = comp.gameObject.GetComponent(Il2CppType.From(_inputType));
+                    if (raw == null) { Dbg("同物体上没找到 CharacterInputPlayer"); return; }
+                    _input = CombatPatches.Rewrap(_inputType, raw);
+                    _playerGo = goId;
+                }
+                if (_input == null) { Dbg("CharacterInputPlayer 重包装失败"); return; }
+
+                // 当前瞄准方向：m_aimDirection 是【局部】方向（face=Left 时 x 反向），先转世界
+                int face = 0;
+                if (_dirType == null) _dirType = AccessTools.TypeByName("CharacterDirection");
+                if (_dirType != null)
+                {
+                    var dirRaw0 = comp.gameObject.GetComponent(Il2CppType.From(_dirType));
+                    if (dirRaw0 != null)
+                    {
+                        var fv0 = CombatPatches.GetMemberTyped(_dirType, CombatPatches.Rewrap(_dirType, dirRaw0), "CurrentDirection");
+                        if (fv0 != null) face = Convert.ToInt32(fv0);
+                    }
+                }
+
+                var curV = CombatPatches.GetMemberTyped(_inputType, _input, "m_aimDirection");
+                if (!(curV is Vector2 curLocal))
+                {
+                    Dbg("m_aimDirection 读不到，实际类型=" + (curV == null ? "null" : curV.GetType().Name));
+                    return;
+                }
+                if (curLocal.sqrMagnitude < 0.0001f) { Dbg("m_aimDirection=0（此刻没在瞄准/没输入）"); return; }
+                Vector2 worldAim = face == 2 ? new Vector2(-curLocal.x, curLocal.y) : curLocal;
+                Dbg($"targets={_targets.Count} aimDir={curLocal.x:0.00},{curLocal.y:0.00} face={face} force={Time.unscaledTime < ForceUntil}");
+
+                Vector3 pp = comp.transform.position;
+                Vector2 playerPos = new Vector2(pp.x, pp.y);
+
+                float maxDist = CombatPlugin.CfgAimAssistMaxDist?.Value ?? 9f;
+                float tol = CombatPlugin.CfgAimAssistTolerance?.Value ?? 0.3f;
+                float strength = Mathf.Clamp(CombatPlugin.CfgAimAssistStrength?.Value ?? 0.3f, 0f, 1f);
+
+                Vector2 aimN = worldAim.normalized;
+
+                // ★ 摩擦输入用【转向速率】而不是摇杆推杆量。
+                //   手柄是方向映射：要瞄准就必须推摇杆，推杆量常态接近 1，
+                //   拿它当摩擦系数会把吸附直接压成 0（实测踩过：s=0.196 且手柄几乎无感）。
+                //   转向速率和设备无关：猛甩（转得快）就松手，稳住（转得慢）就吸住。
+                float turnRate = 0f;
+                if (_hasLastAim && Time.unscaledTime > _lastAimTime)
+                {
+                    float ang = Vector2.Angle(_lastAim, aimN);
+                    turnRate = ang / Mathf.Max(0.0001f, Time.unscaledTime - _lastAimTime);
+                }
+                _lastAim = aimN;
+                _lastAimTime = Time.unscaledTime;
+                _hasLastAim = true;
+
+                const float refRate = 720f;                              // °/s：超过这个速度视为"在甩"
+                float inputAmt = Mathf.Clamp01(turnRate / refRate);
+
+                Vector2 bestDir = Vector2.zero;
+                float bestPerp = float.MaxValue, bestRange = 1f;
+                bool found = false;
+
+                foreach (var t in _targets)
+                {
+                    Vector2 toT = t.Pos - playerPos;
+                    float dist = toT.magnitude;
+                    if (dist < 0.1f || dist > maxDist) continue;
+
+                    Vector2 dirN = toT / dist;
+                    float dot = Vector2.Dot(aimN, dirN);
+                    if (dot < 0.5f) continue;                       // 夹角 > 60°，防吸背后
+
+                    float perp = dist * Mathf.Sqrt(Mathf.Max(0f, 1f - dot * dot));   // 垂直距离（米）
+                    float range = t.Radius + tol;
+                    if (perp > range) continue;
+
+                    if (perp < bestPerp) { bestPerp = perp; bestRange = range; bestDir = dirN; found = true; }
+                }
+                if (!found) return;
+
+                // falloff：三次方衰减 + 25% 保底。
+                // 纯三次方在边缘会掉到 0（实测 perp=0.4 时 s=0.006，等于没吸），
+                // 保底 0.25 保证"在范围内就一定有感觉"。
+                float tNorm = Mathf.Clamp01(bestPerp / Mathf.Max(0.01f, bestRange));
+                float falloff = 0.25f + 0.75f * (1f - Mathf.Pow(tNorm, 3f));
+                float s = strength * falloff * (1f - inputAmt);
+
+                // 调试锁定：面板点"吸附测试"后 5 秒内强制锁到目标，用来验证链路是否真的通
+                bool force = Time.unscaledTime < ForceUntil;
+                if (force) s = 1f;
+
+                if (s <= 0.0001f) return;
+
+                Vector2 newWorld = Vector2.Lerp(aimN, bestDir, Mathf.Clamp01(s)).normalized;
+
+                if (!_logged || Time.unscaledTime >= _nextLog)
+                {
+                    _logged = true;
+                    _nextLog = Time.unscaledTime + 0.5f;
+                    CombatPlugin.Inst?.Log.LogInfo($"[SPC] aim-assist 生效: 弱点目标={_targets.Count} perp={bestPerp:0.000}m"
+                        + $" falloff={falloff:0.00} s={s:0.000} 转向={turnRate:0}°/s force={force}");
+                }
+
+                // ★ 写在【输入层】而不是结果层。
+                // 实测教训：Postfix 改 m_previousAimVector 时 force=True、s=1.000，但 perp 一直卡在 0.32 不动 ——
+                // 说明手臂/枪口的旋转在 UpdateAim 内部就算完了，改结果字段下游不吃。
+                // 改成在 Prefix 写 CharacterInputPlayer.m_aimDirection，游戏自己用我们的输入算出
+                // m_aimInput / m_previousAimVector / 手臂旋转，三者天然一致。
+                // 转回局部写进输入层，游戏随后自己算出 m_aimInput / m_previousAimVector / 手臂旋转
+                Vector2 newLocal = face == 2 ? new Vector2(-newWorld.x, newWorld.y) : newWorld;
+                CombatPatches.SetMemberTyped(_inputType, _input, "m_aimDirection", newLocal);
+            }
+            catch (Exception e)
+            {
+                if (!_warned) { _warned = true; CombatPlugin.Inst?.Log.LogWarning("[SPC] aim-assist 异常: " + e.Message); }
+            }
+        }
+    }
+
     // ================= 运行时：热键 + 面板 =================
     // 面板字符串表。日志不翻：那是排障用的，翻了反而不好搜。
     public static class L10n
@@ -1126,6 +2559,25 @@ namespace SilverPinesCombat
             { "aim.width",       new[]{ "线宽 {0:0.000} m",      "Width {0:0.000} m" } },
             { "aim.gray",        new[]{ "灰度 {0:0.00}（0黑 1白）", "Gray {0:0.00} (0 black, 1 white)" } },
             { "aim.delay",       new[]{ "抬起延迟 {0:0.00} s",   "Raise delay {0:0.00} s" } },
+            { "aim.movelock",    new[]{ "瞄准时忽略移动输入（左摇杆/WASD）", "Ignore movement input while aiming (stick/WASD)" } },
+            { "aim.probe",       new[]{ "辅助瞄准诊断（2 秒）",    "Aim-assist probe (2 s)" } },
+            { "as.enable",       new[]{ "辅助瞄准（弱点优先）",    "Aim assist (weakpoint first)" } },
+            { "as.strength",     new[]{ "吸附强度 {0:0.00}",       "Strength {0:0.00}" } },
+            { "as.dist",         new[]{ "吸附距离 {0:0.0} m",      "Max distance {0:0.0} m" } },
+            { "as.tol",          new[]{ "容差 {0:0.00} m",         "Tolerance {0:0.00} m" } },
+            { "as.force",        new[]{ "吸附测试：强制锁定 5 秒", "Force-lock test (5 s)" } },
+            { "tab.bag",         new[]{ "背包",                    "Bag" } },
+            { "tab.spawn",       new[]{ "刷怪",                    "Spawn" } },
+            { "spawn.hint",      new[]{ "点上面按钮列出可生成对象", "Tap above to list spawnables" } },
+            { "spawn.refresh",   new[]{ "重新列出",                "Refresh list" } },
+            { "bag.rows",        new[]{ "额外行数 {0}",            "Extra rows {0}" } },
+            { "bag.sub",         new[]{ "− 1 行",                  "− 1 row" } },
+            { "bag.add",         new[]{ "+ 1 行",                  "+ 1 row" } },
+            { "bag.dump",        new[]{ "打印详情到日志",          "Dump to log" } },
+            { "spawn.dump",      new[]{ "刷怪点诊断",              "List spawners" } },
+            { "spawn.go",        new[]{ "激活刷怪（临时）",        "Activate spawners" } },
+            { "spawn.list",      new[]{ "列出可生成对象",          "List spawnables" } },
+            { "spawn.byname",    new[]{ "按名生成",                "Spawn by name" } },
             { "god",             new[]{ "无敌",                  "Invincible" } },
             { "ammo",            new[]{ "无限弹药",              "Infinite ammo" } },
             { "weak",            new[]{ "全程弱点命中",          "Always weakpoint" } },
@@ -1180,11 +2632,15 @@ namespace SilverPinesCombat
         private void LateUpdate()
         {
             AimLine.Tick();
+            CombatPatches.AimLockTickField();   // 手柄瞄准锁定（getter patch 的兜底）
         }
 
         private void Update()
         {
             TickLunge();                              // 前踏位移每帧推进
+            GamepadDiag.Tick(0.2f);                   // 手柄输入采样（Debug.GamepadInputLog 控制）
+            BagTweak.Tick();                          // 背包扩容（按配置增量应用）
+            AimAssistProbe.Tick();                    // 辅助瞄准探针（采样窗口结束时打摘要）
 
             if (Time.unscaledTime >= _nextApply)
             {
@@ -1305,7 +2761,7 @@ namespace SilverPinesCombat
             if (v != cfg.Value) cfg.Value = v;
         }
 
-        private static readonly string[] TabKeys = { "tab.combat", "tab.aim", "tab.cheat" };
+        private static readonly string[] TabKeys = { "tab.combat", "tab.aim", "tab.bag", "tab.cheat" };
         private bool _guiErrorLogged;
 
         private void OnGUI()
@@ -1315,7 +2771,7 @@ namespace SilverPinesCombat
             if (!_show) return;
 
             float w = L10n.Lang == "en" ? 400f : 350f;
-            var r = new Rect(12, 12, w, 300);
+            var r = new Rect(12, 12, w, 600);
             GUI.Box(r, L10n.T("title") + "   (" + L10n.T("hide") + ")");
             GUILayout.BeginArea(new Rect(r.x + 10, r.y + 26, r.width - 20, r.height - 34));
 
@@ -1331,6 +2787,7 @@ namespace SilverPinesCombat
                 {
                     case 0: TabCombat(); break;
                     case 1: TabAim(); break;
+                    case 2: TabBag(); break;
                     default: TabCheats(); break;
                 }
             }
@@ -1412,6 +2869,85 @@ namespace SilverPinesCombat
 
             GUILayout.Label(L10n.F("aim.delay", CombatPlugin.CfgAimLineShowDelay.Value));
             CombatPlugin.CfgAimLineShowDelay.Value = GUILayout.HorizontalSlider(CombatPlugin.CfgAimLineShowDelay.Value, 0f, 0.5f);
+
+            GUILayout.Space(10);
+            Row(CombatPlugin.CfgAimLockLeftStick, KeyCode.None, L10n.T("aim.movelock"));
+
+            GUILayout.Space(10);
+            Row(CombatPlugin.CfgAimAssistEnabled, KeyCode.None, L10n.T("as.enable"));
+            if (CombatPlugin.CfgAimAssistEnabled.Value)
+            {
+                // 测试按钮放最前面：面板空间紧张时优先保住它
+                if (GUILayout.Button(L10n.T("as.force"))) AimAssist.ForceUntil = Time.unscaledTime + 5f;
+
+                GUILayout.Label(L10n.F("as.strength", CombatPlugin.CfgAimAssistStrength.Value));
+                CombatPlugin.CfgAimAssistStrength.Value = GUILayout.HorizontalSlider(CombatPlugin.CfgAimAssistStrength.Value, 0.1f, 0.4f);
+
+                GUILayout.Label(L10n.F("as.dist", CombatPlugin.CfgAimAssistMaxDist.Value));
+                CombatPlugin.CfgAimAssistMaxDist.Value = GUILayout.HorizontalSlider(CombatPlugin.CfgAimAssistMaxDist.Value, 3f, 20f);
+
+                GUILayout.Label(L10n.F("as.tol", CombatPlugin.CfgAimAssistTolerance.Value));
+                CombatPlugin.CfgAimAssistTolerance.Value = GUILayout.HorizontalSlider(CombatPlugin.CfgAimAssistTolerance.Value, 0f, 2f);
+            }
+
+            GUILayout.Space(6);
+            if (GUILayout.Button(L10n.T("aim.probe"))) AimAssistProbe.Start(2f);
+        }
+
+        // ---------------- 背包 ----------------
+        private void TabBag()
+        {
+            GUILayout.Label(BagTweak.Info());
+
+            GUILayout.Space(8);
+            GUILayout.Label(L10n.F("bag.rows", CombatPlugin.CfgBagExtraRows.Value));
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button(L10n.T("bag.sub"))) BagTweak.ChangeRows(-1);
+            if (GUILayout.Button(L10n.T("bag.add"))) BagTweak.ChangeRows(1);
+            GUILayout.EndHorizontal();
+
+            GUILayout.Space(8);
+            if (GUILayout.Button(L10n.T("bag.dump"))) BagTweak.Dump();
+
+            // 缩容被拒绝时把原因显示出来（否则按钮点了没反应，玩家会以为坏了）
+            if (!string.IsNullOrEmpty(BagTweak.LastMsg))
+            {
+                GUILayout.Space(6);
+                GUILayout.Label("⚠ " + BagTweak.LastMsg);
+            }
+        }
+
+        // ---------------- 刷怪（临时，发布前删） ----------------
+        private static int _spawnPage;
+
+        private void TabSpawn()
+        {
+            if (SpawnerTool.Names.Count == 0)
+            {
+                if (GUILayout.Button(L10n.T("spawn.list"))) SpawnerTool.RefreshNames();
+                GUILayout.Label(L10n.T("spawn.hint"));
+                return;
+            }
+
+            const int per = 7;
+            int pages = Mathf.Max(1, (SpawnerTool.Names.Count + per - 1) / per);
+            _spawnPage = Mathf.Clamp(_spawnPage, 0, pages - 1);
+
+            int start = _spawnPage * per;
+            int end = Mathf.Min(start + per, SpawnerTool.Names.Count);
+            for (int i = start; i < end; i++)
+            {
+                if (GUILayout.Button(SpawnerTool.Names[i])) SpawnerTool.SpawnByName(SpawnerTool.Names[i]);
+            }
+
+            GUILayout.Space(4);
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("<") && _spawnPage > 0) _spawnPage--;
+            GUILayout.Label((_spawnPage + 1) + " / " + pages);
+            if (GUILayout.Button(">") && _spawnPage < pages - 1) _spawnPage++;
+            GUILayout.EndHorizontal();
+
+            if (GUILayout.Button(L10n.T("spawn.refresh"))) SpawnerTool.RefreshNames();
         }
 
         // ---------------- 作弊 ----------------
