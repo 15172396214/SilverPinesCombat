@@ -15,7 +15,12 @@ Silver Pines Combat
 -----------------------------------------------------------------
 【2】SHORT DESCRIPTION（列表页显示的一行，限 ~200 字符）
 -----------------------------------------------------------------
-Combat feel overhaul: dodge cancels attacks, stomp snaps to the enemy, and a thin muzzle aim line. Runtime IL2CPP patches, no game files modified.
+Combat feel overhaul for Silver Pines: dodge cancels any attack, stomp closes the gap instead of whiffing, and a thin aim line from the muzzle. Runtime patch - no game file modified.
+
+
+备选（同一字段，看哪个顺眼用哪个）：
+- Tightens Silver Pines combat: dodge-cancel any attack, stomp no longer whiffs in place, and a thin muzzle line shows where you're aiming. IL2CPP runtime patch, nothing on disk touched.
+- Three combat fixes for Silver Pines: attacks are dodge-cancellable at any point, stomp snaps forward into range, and aiming draws a thin line from the muzzle. No game files modified.
 
 
 -----------------------------------------------------------------
