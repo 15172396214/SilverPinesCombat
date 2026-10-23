@@ -1,0 +1,54 @@
+Nexus v1.1.0 上传字段（直接复制粘贴）
+=====================================================
+
+【NAME】
+Silver Pines Combat
+
+
+【SHORT DESCRIPTION】（列表页一行，限 ~200 字符）
+
+首选：
+Silver Pines combat overhaul: dodge-cancel any attack, stomp that actually closes the gap, aim unaffected by movement, expandable inventory. Runtime patch, nothing on disk touched.
+
+备选 A：
+Combat overhaul + QoL for Silver Pines: dodge cancels any attack, stomp closes the gap, movement no longer drags your aim, expandable inventory. Runtime patch - no game file modified.
+
+备选 B：
+Fixes Silver Pines combat feel: attacks are dodge-cancellable at any point, stomp snaps into range, movement stops dragging your aim, inventory can grow. No game files modified.
+
+
+【FILES 栏描述】
+
+SilverPinesCombat-1.1.0-full.zip  （Main file / 34.4 MB）
+Main file. Plugin + BepInEx 6.0.0-be.789 runtime in one archive - nothing else needed.
+Extract into the game root (same folder as Carpenter.exe). Watch out: Windows "Extract All" pre-fills a subfolder name; delete it or winhttp.dll ends up one level too deep and the mod silently never loads.
+First launch takes 1-3 minutes while BepInEx generates interop assemblies. That is normal.
+
+SilverPinesCombat-1.1.0.zip  （Optional file / 57 KB）
+Plugin only. Use this if you already run BepInEx 6 IL2CPP be.789 or newer - merge its BepInEx folder into the game root and your existing setup stays as it is.
+Not compatible with the be.788 pack hosted on this site (one build behind what this was built and tested against).
+
+
+【CHANGELOG / 版本说明】（可选，填在 Files 的 changelog 或 Description 顶部）
+
+1.1.0
+- New: expandable inventory (0-10 extra rows, panel slider). Shrinking is refused while the extra rows still hold items.
+- New: movement input no longer changes your aim angle (left stick / WASD). Right stick or mouse still turns you.
+- New: visible dodge i-frames (off by default) - character tints bright cyan while invulnerable.
+- Removed: the unfinished aim-assist implementation and its debug probe.
+
+1.0.0
+- Dodge cancels attacks at any point.
+- Stomp steps forward into range instead of whiffing.
+- Thin aim line from the muzzle.
+
+
+【Tags】
+Gameplay + Utilities for Players
+（不要选 Cheats / Trainers：主体是手感改造，作弊只是附带调试开关）
+
+
+【AI 标签】
+AI-Generated Content  — 必勾（代码维度，事实如此）
+AI Media             — 本页 description 由 AI 起草，按官方定义也应勾
+AI Assisted          — 不建议（证据链偏弱：仓库是清洗过的单 commit，看不出开发过程）

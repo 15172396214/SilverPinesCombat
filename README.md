@@ -4,11 +4,14 @@
 
 给《银松镇 / Silver Pines》（Steam AppID 2333000）做的战斗手感改造 mod。Unity 6 + IL2CPP，走 BepInEx 6 Bleeding Edge + Harmony，**全部改动在运行时内存里完成，不碰任何游戏文件**。
 
-三个已实现的功能：
+已实现的功能：
 
 - **闪避取消攻击** — 原版只有起手瞬间和判定结束后能取消，patch 后整段攻击都能取消
 - **踩踏前踏吸附** — 按下踩踏先向前踏一小段，贴到刚好踩得到的距离，不再原地踩空
 - **瞄准指示线** — 从枪口 `ProjectileWeapon.m_muzzle` 画一条灰色细线，定长，只在真正瞄准时出现
+- **背包扩容**（v1.1.0）— 面板调额外行数（0–10），格子跟着长出来，已买的扩容道具照常叠加；缩容前会检查额外行有没有物品，有就拒绝（越界物品会让背包菜单卡死，只能大退）
+- **瞄准时移动不再带偏方向**（v1.1.0）— 手柄左摇杆、键鼠 A/D 都不再改变瞄准角度，右摇杆/鼠标仍能正常转身
+- **显示闪避无敌帧**（v1.1.0，默认关）— 无敌期间角色整体变亮青色，能直观看出无敌窗口有多长
 
 外加 F1–F5 作弊开关、F6 慢动作、判定框绘制（默认关）。面板支持中英双语。
 
@@ -20,10 +23,10 @@
 
 | 文件 | 体积 | 内容 |
 |---|---|---|
-| `SilverPinesCombat-1.0.0-full.zip` | **32.8 MB** | 插件 + BepInEx 6 be.789 全套，什么都不装，解压到游戏根目录就能用 |
-| `SilverPinesCombat-1.0.0.zip` | **45 KB** | 只有插件 DLL，适合已经装过 BepInEx 6 IL2CPP（be.789 或更新）的人 |
+| `SilverPinesCombat-1.1.0-full.zip` | **34.4 MB** | 插件 + BepInEx 6 be.789 全套，什么都不装，解压到游戏根目录就能用 |
+| `SilverPinesCombat-1.1.0.zip` | **57 KB** | 只有插件 DLL，适合已经装过 BepInEx 6 IL2CPP（be.789 或更新）的人 |
 
-⚠️ 解压时别让资源管理器多套一层目录（默认会解到 `Silver Pines\SilverPinesCombat-1.0.0-full\`）。
+⚠️ 解压时别让资源管理器多套一层目录（默认会解到 `Silver Pines\SilverPinesCombat-1.1.0-full\`）。
 `winhttp.dll` 必须在 `Silver Pines\` 这一层，否则游戏能启动但 mod 完全不加载、且没有任何报错。
 
 > `-full` 包里**不含** `BepInEx\unity-libs\`——那是首次启动时 BepInEx 自己生成的缓存（约 11 MB），
@@ -42,8 +45,11 @@ plugin/           插件源码
   deploy.ps1        构建后拷进游戏目录并用 MD5 校验
 dist/             发布产物与用户文档
   README.md / README.en.md   用户手册（安装 / 配置 / 已知限制）
-  release-notes-v1.0.0.md    Release 正文
+  release-notes-v1.1.0.md    Release 正文（当前版本）
+  release-notes-v1.0.0.md    Release 正文（历史）
   nexus-page.txt             Nexus 页面文案（含上传注意事项）
+  nexus-description-1.1.0.txt  N 网 Description 正文（BBCode，直接粘贴）
+  nexus-fields-1.1.0.txt       N 网配套字段（短描述 / Files 描述 / 标签）
 tools/
   check-plugin.ps1 启动后自检脚本
 recon.ps1          零代码侦察脚本
