@@ -1,7 +1,12 @@
 Nexus Mods 页面文案（BBCode）
 =====================================
 游戏页面：https://www.nexusmods.com/silverpines
-上传入口：游戏页 → Mods → Upload a mod（需登录）
+上传入口：游戏页 → UPLOAD A MOD（需登录）
+
+【分类怎么选】（2026-10-23 实测该站分类树）
+- Category：只有 [b]Miscellaneous[/b] 一个可选（Silver Pines 分类树下就这一项，24 个 mod 全在里面）。别纠结，选它。
+- Tags 才是真正描述内容的，建议：[b]Gameplay[/b] + [b]Utilities for Players[/b]。
+  别选 Cheats / Trainers —— 主体是手感改造，作弊只是附带的调试开关，挂 Cheats 会被归到修改器那一类。
 
 下面三段分别对应 Nexus 上传页的三个字段，直接复制粘贴。
 
