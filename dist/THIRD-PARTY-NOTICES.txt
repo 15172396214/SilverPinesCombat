@@ -1,0 +1,25 @@
+THIRD-PARTY NOTICES
+
+This package bundles BepInEx (Bleeding Edge build be.789, IL2CPP win-x64).
+
+  BepInEx
+  Copyright (c) BepInEx team and contributors
+  Licensed under the GNU Lesser General Public License v2.1 (LGPL-2.1)
+  Source code: https://github.com/BepInEx/BepInEx
+  Builds:      https://builds.bepinex.dev/projects/bepinex_be
+
+The following files/folders in this package come from BepInEx and are covered
+by LGPL-2.1, not by this mod's license:
+
+  winhttp.dll
+  doorstop_config.ini
+  .doorstop_version
+  dotnet/
+  BepInEx/            (except BepInEx/plugins/SilverPinesCombat/)
+
+The mod itself (BepInEx/plugins/SilverPinesCombat/SilverPinesCombat.dll)
+is licensed under MIT.
+
+No game files are included in this package, and no game files are modified.
+Everything the mod does happens in memory at runtime; deleting the folders
+listed above restores the unmodified game.

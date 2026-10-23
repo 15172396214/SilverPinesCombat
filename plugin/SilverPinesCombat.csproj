@@ -1,0 +1,96 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Silver Pines Combat — BepInEx 6 IL2CPP 插件
+
+    引用策略（自动降级）：
+      1. 若存在 BepInEx/interop/*.dll  -> 用 BepInEx 自己生成的 interop（正式构建，推荐）
+      2. 否则                          -> 用 Il2CppDumper 的 DummyDll 里的 UnityEngine（仅用于语法/API 校验）
+
+    构建：
+      dotnet build -c Release
+      dotnet build -c Release -p:GameDir="D:\...\Silver Pines"
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <AssemblyName>SilverPinesCombat</AssemblyName>
+    <RootNamespace>SilverPinesCombat</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <DebugType>embedded</DebugType>
+
+    <GameDir Condition="'$(GameDir)' == ''">d:\SteamLibrary\steamapps\common\Silver Pines</GameDir>
+    <BepInExDir>$(GameDir)\BepInEx</BepInExDir>
+    <DummyDir>$(MSBuildThisFileDirectory)..\tools\dump\DummyDll</DummyDir>
+    <PluginOut>$(BepInExDir)\plugins\SilverPinesCombat</PluginOut>
+
+    <UseInterop Condition="Exists('$(BepInExDir)\interop\UnityEngine.CoreModule.dll')">true</UseInterop>
+    <UseInterop Condition="'$(UseInterop)' != 'true'">false</UseInterop>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Plugin.cs" />
+  </ItemGroup>
+
+  <!-- BepInEx 运行时 -->
+  <ItemGroup>
+    <Reference Include="BepInEx.Core">
+      <HintPath>$(BepInExDir)\core\BepInEx.Core.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="BepInEx.Unity.IL2CPP">
+      <HintPath>$(BepInExDir)\core\BepInEx.Unity.IL2CPP.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Il2CppInterop.Runtime">
+      <HintPath>$(BepInExDir)\core\Il2CppInterop.Runtime.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(BepInExDir)\core\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- 正式：BepInEx 生成的 interop -->
+  <ItemGroup Condition="'$(UseInterop)' == 'true'">
+    <_Interop Include="$(BepInExDir)\interop\*.dll" />
+    <Reference Include="@(_Interop)">
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- 降级：Il2CppDumper 的 DummyDll（只取 UnityEngine 三个模块做编译校验） -->
+  <ItemGroup Condition="'$(UseInterop)' != 'true'">
+    <Reference Include="$(DummyDir)\UnityEngine.CoreModule.dll">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="$(DummyDir)\UnityEngine.IMGUIModule.dll">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="$(DummyDir)\UnityEngine.InputLegacyModule.dll">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="$(DummyDir)\UnityEngine.dll">
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(UseInterop)' != 'true'">
+    <DefineConstants>$(DefineConstants);SPT_DUMMY_VALIDATION</DefineConstants>
+  </PropertyGroup>
+
+  <Target Name="ReportMode" BeforeTargets="Build">
+    <Message Text="[SPC] UseInterop=$(UseInterop)  GameDir=$(GameDir)" Importance="high" />
+  </Target>
+
+  <Target Name="DeployToGame" AfterTargets="Build" Condition="'$(UseInterop)' == 'true'">
+    <MakeDir Directories="$(PluginOut)" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(PluginOut)" />
+    <Message Text="[SPC] deployed to $(PluginOut)" Importance="high" />
+  </Target>
+
+</Project>

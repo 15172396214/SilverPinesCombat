@@ -1,0 +1,71 @@
+Nexus Mods 页面文案（BBCode）
+=====================================
+下面三段分别对应 Nexus 上传页的三个字段，直接复制粘贴。
+带 << >> 的地方要你自己填。
+
+
+-----------------------------------------------------------------
+【1】NAME（页面标题）
+-----------------------------------------------------------------
+Silver Pines Combat
+
+
+-----------------------------------------------------------------
+【2】SHORT DESCRIPTION（列表页显示的一行，限 ~200 字符）
+-----------------------------------------------------------------
+Combat feel overhaul: dodge cancels attacks, stomp snaps to the enemy, and a thin muzzle aim line. Runtime IL2CPP patches, no game files modified.
+
+
+-----------------------------------------------------------------
+【3】DESCRIPTION（正文，BBCode）
+-----------------------------------------------------------------
+
+[size=5][b]Silver Pines Combat[/b][/size]
+Combat feel overhaul for Silver Pines. Everything is patched in memory at runtime — no game file is ever modified or replaced.
+
+[size=4][b]What it does[/b][/size]
+[list]
+[*][b]Dodge cancels attacks[/b] — in vanilla you can only cancel during the startup frames and after the hitbox closes. With this patch the whole attack animation is cancellable.
+[*][b]Stomp snaps to the enemy[/b] — pressing stomp steps you forward first, closing to exactly stomping range (auto-fitted to the enemy's collider width), so you stop whiffing in place.
+[*][b]Aim line[/b] — a thin grey line drawn from the muzzle ([i]ProjectileWeapon.m_muzzle[/i]), fixed length, visible only while actually aiming.
+[/list]
+
+Also included: F1–F5 cheat toggles, F6 slow motion, hitbox drawing (off by default). The in-game panel supports English and Chinese.
+
+[size=4][b]Install[/b][/size]
+[list=1]
+[*]Grab [b]SilverPinesCombat-1.0.0-full.zip[/b] and extract everything into the game root (Steam → Library → right-click Silver Pines → Manage → Browse local files).
+[*]Launch the game. The [b]first launch hangs for 1–3 minutes[/b] — BepInEx is generating ~180 proxy DLLs under [i]BepInEx\interop\[/i]. It looks frozen but isn't; don't kill it. Later launches are instant.
+[*]Press F7 in game to show/hide the panel.
+[/list]
+If you already run BepInEx, take the small zip instead and merge its [i]BepInEx[/i] folder into the game root.
+
+[size=4][b]Requirements[/b][/size]
+BepInEx 6.0.0-bleeding-edge ([b]be.789 or newer[/b]), IL2CPP, win-x64. The game uses metadata version 39 — older BepInEx builds fail with [i]Unsupported metadata version found! We support 23-29, got 39[/i].
+
+[size=4][b]Hotkeys[/b][/size]
+[table]
+[tr][th]Key[/th][th]Function[/th][/tr]
+[tr][td]F7[/td][td]Show / hide panel[/td][/tr]
+[tr][td]F1–F5[/td][td]Invincible / infinite ammo / always weakpoint / infinite stamina / AI oblivious[/td][/tr]
+[tr][td]F6[/td][td]Slow motion[/td][/tr]
+[/table]
+Every toggle and slider is also in the panel. Config file: [i]BepInEx\config\silverpines.combat.cfg[/i]
+
+[size=4][b]What's next[/b][/size]
+None of these is in v1.0.0 — this is the direction, not a promise:
+[list]
+[*][b]Aim assist (soft lock)[/b] — the current line is only an indicator. Next step is bending the shot toward the nearest target within an angle threshold, with a strength slider.
+[*][b]Auto pump-action for the shotgun[/b] — the pump parameter lives in a ScriptableObject and can't be changed at runtime, so it needs a different route through the animation state machine.
+[*][b]Reload without aiming first[/b] — calling [i]StartReload[/i] directly deadlocks the main thread; the game's own input gate has to be found first.
+[*][b]Stomp while moving[/b] — the restriction sits in the attack state machine, not the input layer.
+[/list]
+
+[size=4][b]Uninstall[/b][/size]
+Delete [i]BepInEx\plugins\SilverPinesCombat\[/i]. Nothing else was touched.
+
+[size=4][b]Source & license[/b][/size]
+Source: https://github.com/15172396214/SilverPinesCombat
+Mod code: MIT. The bundled BepInEx (in the -full archive) is LGPL-2.1.
+
+Built with BepInEx 6 + Harmony against IL2CPP metadata v39. Type information came from compiling an upstream Il2CppDumper PR branch by hand — the official release doesn't support v39 yet.

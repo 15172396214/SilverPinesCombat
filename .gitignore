@@ -1,0 +1,28 @@
+# 构建产物
+bin/
+obj/
+plugin/bin/
+plugin/obj/
+
+# 发布包（放在 GitHub Release，不进仓库）
+dist/*.zip
+dist/_stage/
+dist/_slim/
+
+# 备份
+plugin/*.bak*
+plugin/config-backup*.cfg
+
+# 逆向工具链与反编译产物（体积大，且不是本项目代码）
+tools/dump/
+tools/Il2CppDumper/
+tools/Il2CppDumper-*/
+tools/*.zip
+
+# 编辑器
+.vs/
+.vscode/
+*.user
+
+# 私人工作文档（含个人信息，仅本地保留，不进仓库）
+_private/
