@@ -1,7 +1,9 @@
 Nexus Mods 页面文案（BBCode）
 =====================================
+游戏页面：https://www.nexusmods.com/silverpines
+上传入口：游戏页 → Mods → Upload a mod（需登录）
+
 下面三段分别对应 Nexus 上传页的三个字段，直接复制粘贴。
-带 << >> 的地方要你自己填。
 
 
 -----------------------------------------------------------------
@@ -34,14 +36,16 @@ Also included: F1–F5 cheat toggles, F6 slow motion, hitbox drawing (off by def
 
 [size=4][b]Install[/b][/size]
 [list=1]
-[*]Grab [b]SilverPinesCombat-1.0.0-full.zip[/b] and extract everything into the game root (Steam → Library → right-click Silver Pines → Manage → Browse local files).
+[*]Install a BepInEx 6 IL2CPP pack first. There is already one on this site — [b]Silver Pines BepInEx 6 IL2CPP Pack[/b] (be.790). Mods that ship their own BepInEx work too.
+[*]Grab [b]SilverPinesCombat-1.0.0.zip[/b] and merge its [i]BepInEx[/i] folder into the game root (Steam → Library → right-click Silver Pines → Manage → Browse local files). Result: [i]BepInEx\plugins\SilverPinesCombat\SilverPinesCombat.dll[/i].
 [*]Launch the game. The [b]first launch hangs for 1–3 minutes[/b] — BepInEx is generating ~180 proxy DLLs under [i]BepInEx\interop\[/i]. It looks frozen but isn't; don't kill it. Later launches are instant.
 [*]Press F7 in game to show/hide the panel.
 [/list]
-If you already run BepInEx, take the small zip instead and merge its [i]BepInEx[/i] folder into the game root.
+[b]SilverPinesCombat-1.0.0-full.zip[/b] is the same plugin with BepInEx be.789 bundled, for people starting from nothing. If you already installed be.790 from the pack above, use the small zip — don't mix the two.
 
 [size=4][b]Requirements[/b][/size]
 BepInEx 6.0.0-bleeding-edge ([b]be.789 or newer[/b]), IL2CPP, win-x64. The game uses metadata version 39 — older BepInEx builds fail with [i]Unsupported metadata version found! We support 23-29, got 39[/i].
+
 
 [size=4][b]Hotkeys[/b][/size]
 [table]
