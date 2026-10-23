@@ -10,12 +10,18 @@ Unity 6 + IL2CPP, built on BepInEx 6 Bleeding Edge + Harmony. **Everything happe
 
 ## 下载 / Download
 
-| 文件 | 内容 |
-|---|---|
-| `SilverPinesCombat-1.0.0.zip` | 只有插件 DLL + 两份 README。适合**已经装过 BepInEx 的人** |
-| `SilverPinesCombat-1.0.0-full.zip` | 含 BepInEx 6 be.789 全套。**什么都不装，直接解压到游戏根目录就能用** |
+| 文件 / File | 体积 | 内容 |
+|---|---|---|
+| `SilverPinesCombat-1.0.0-full.zip` | **32.8 MB** | 插件 + BepInEx 6 be.789 全套。什么都不装，解压到游戏根目录就能用 |
+| `SilverPinesCombat-1.0.0.zip` | **45 KB** | 只有插件 DLL，适合已经装过 BepInEx 6 IL2CPP（be.789 或更新）的人 |
 
-安装步骤见 `README.md`（中文）/ `README.en.md`（English）。
+安装步骤见包内 `BepInEx\plugins\SilverPinesCombat\README.md`（中文）/ `README.en.md`（English）。
+
+⚠️ 解压时别让资源管理器多套一层目录（默认会解到 `Silver Pines\SilverPinesCombat-1.0.0-full\`）。
+`winhttp.dll` 必须在 `Silver Pines\` 这一层，否则游戏能正常启动但 mod 完全不加载、且没有任何报错。
+
+> `-full` 包里不含 `BepInEx\unity-libs\` —— 那是首次启动时 BepInEx 自己生成的缓存（约 11 MB）。
+> 打进压缩包会被 Nexus 的自动扫描判定成「嵌套压缩包」而隔离整个文件。
 
 > ⚠️ 整合包里的 BepInEx 是 **6.0.0-bleeding-edge (be.789)**。如果你装的是 BepInEx 5 或更老的 6，会报
 > `Unsupported metadata version found! We support 23-29, got 39` —— 本游戏用的是 metadata v39，老版本读不了。

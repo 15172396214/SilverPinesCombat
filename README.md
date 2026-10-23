@@ -18,10 +18,16 @@
 
 去 [Releases](../../releases) 页面拿打包好的：
 
-| 文件 | 内容 |
-|---|---|
-| `SilverPinesCombat-1.0.0.zip` | 只有插件 DLL + 两份 README，适合已经装过 BepInEx 的人 |
-| `SilverPinesCombat-1.0.0-full.zip` | 含 BepInEx 6 be.789 全套，什么都不装直接解压就能用 |
+| 文件 | 体积 | 内容 |
+|---|---|---|
+| `SilverPinesCombat-1.0.0-full.zip` | **32.8 MB** | 插件 + BepInEx 6 be.789 全套，什么都不装，解压到游戏根目录就能用 |
+| `SilverPinesCombat-1.0.0.zip` | **45 KB** | 只有插件 DLL，适合已经装过 BepInEx 6 IL2CPP（be.789 或更新）的人 |
+
+⚠️ 解压时别让资源管理器多套一层目录（默认会解到 `Silver Pines\SilverPinesCombat-1.0.0-full\`）。
+`winhttp.dll` 必须在 `Silver Pines\` 这一层，否则游戏能启动但 mod 完全不加载、且没有任何报错。
+
+> `-full` 包里**不含** `BepInEx\unity-libs\`——那是首次启动时 BepInEx 自己生成的缓存（约 11 MB），
+> 打进压缩包会让 Nexus 的自动扫描判定为「嵌套压缩包」而隔离整个文件。
 
 安装和使用说明见 [`dist/README.md`](dist/README.md)（中文）/ [`dist/README.en.md`](dist/README.en.md)（English）。
 
@@ -35,16 +41,17 @@ plugin/           插件源码
   SilverPinesCombat.csproj
   deploy.ps1        构建后拷进游戏目录并用 MD5 校验
 dist/             发布产物与用户文档
+  README.md / README.en.md   用户手册（安装 / 配置 / 已知限制）
+  release-notes-v1.0.0.md    Release 正文
+  nexus-page.txt             Nexus 页面文案（含上传注意事项）
 tools/
   check-plugin.ps1 启动后自检脚本
-  recon.ps1        零代码侦察脚本
-侦察结果_*.md      游戏文件结构侦察记录
-反编译结果_*.md    作弊开关 / 控制台相关类型整理
+recon.ps1          零代码侦察脚本
 逆向教程_从零到注入.md   完整逆向过程，从买游戏到注入跑通
-战斗改造方案.md     功能设计与取舍记录
 ```
 
-> `tools/dump/`（43 MB 的 `dump.cs`）和 Il2CppDumper 没进仓库，体积太大。需要的话按教程里的步骤自己生成。
+> 没进仓库的三样：`tools/dump/`（43 MB 的 `dump.cs`）、Il2CppDumper 本体、以及开发期的侦察笔记。
+> 体积太大或含本机信息。需要的话按教程里的步骤自己生成。
 
 ---
 
