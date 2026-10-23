@@ -70,6 +70,26 @@ Merge the BepInEx folder into the game root. Your existing setup is left untouch
 If you are on the be.788 pack from this site, use the main file instead - this plugin was not
 built or tested against be.788.
 
+【AI 标签怎么勾】（2026-10-23 核对官方 File Submission Guidelines，比我先前的说法严）
+官方现行三个标签，定义照抄：
+- [b]AI-Generated Content[/b] — AI-Generated code, user interface elements, voices, dialogue,
+  translations, music, in-game AI-generated assets.
+- [b]AI Media[/b] — AI promotional art, thumbnails, videos, [u]mod page descriptions[/u] or media
+  outside of the mod content in-game.
+- [b]AI Assisted[/b] — Developer-led code, content, or mod assets, [u]with limited AI involvement[/u].
+  这个标签要求提供"显著证据"：项目文件历史、版本控制提交历史、能解释自己代码的能力。
+  证据不足会被管理员改成别的标签。
+
+对照本项目：
+- 代码：绝大部分由 AI 产出，人负责需求、验证、取舍 ⇒ 按定义属于 [b]AI-Generated Content[/b]。
+- 本页 description：AI 起草 ⇒ 按定义属于 [b]AI Media[/b]。
+- 想挂 [b]AI Assisted[/b] 的话，证据链偏弱（仓库是清洗过的单 commit，看不出开发过程）。
+
+建议：[b]AI-Generated Content[/b] 必勾（代码维度，事实如此）。
+[u]不勾的后果：官方明确写了"Failure to correctly tag mods, including undisclosed generative AI usage,
+may be subject to moderation action"，且举报一次就够。[/u]
+这条跟"坦荡"无关，是减少被下架风险；而且你的定位是"我做了个 mod"，别人在意的是能不能用。
+
 下面三段分别对应 Nexus 上传页的三个字段，直接复制粘贴。
 
 
