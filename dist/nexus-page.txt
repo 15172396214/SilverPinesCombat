@@ -23,6 +23,24 @@ Nexus Mods 页面文案（BBCode）
   06-dodge-cancel.png   攻击被闪避打断
   再加一张英文面板截图（点 EN 之后），凑满 5 张。
 
+【Files 栏怎么摆】（2026-10-23 定）
+务必：小包 = Main File（大按钮），full 包 = Optional File。
+理由：① 45 KB vs 38.6 MB，让 99% 的人下 45 KB；② full 里捆的是 BepInEx [b]be.789[/b]，而站内前置包是 [b]be.790[/b]
+——已经装了前置包的人再解压 full，会把 BepInEx/core 的 37 个文件 + winhttp.dll + doorstop_config.ini 覆盖回旧版
+（等于给别人的共享依赖做降级，会连带搞坏他别的 mod）。③ 正文安装步骤本来就是「先装前置包 → 再放插件」，摆反了文案对不上。
+操作：ADD FILES 传小包 → Category 选 [b]Main File[/b]；
+      回来点 full 那条的 [b]Edit File[/b] → Category 改成 [b]Optional File[/b]（Nexus 允许事后改分类，不用删了重传）。
+
+两个文件描述（Files 页签里直接显示，很多人不看正文，所以警告写这儿）：
+
+--- 小包 Main File ---
+Plugin only, 45 KB. Requires BepInEx 6 IL2CPP (be.789 or newer) - grab the "Silver Pines BepInEx 6 IL2CPP Pack" from this site first if you don't have it.
+Unzip and merge the BepInEx folder into the game root. Result: BepInEx\plugins\SilverPinesCombat\SilverPinesCombat.dll
+
+--- full 包 Optional File ---
+Same plugin, with BepInEx be.789 bundled - use this ONLY if you have no BepInEx at all.
+[b]Do not use this if you already installed the be.790 pack[/b] - it would overwrite BepInEx core with the older build.
+
 下面三段分别对应 Nexus 上传页的三个字段，直接复制粘贴。
 
 
