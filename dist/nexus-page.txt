@@ -23,23 +23,60 @@ Nexus Mods 页面文案（BBCode）
   06-dodge-cancel.png   攻击被闪避打断
   再加一张英文面板截图（点 EN 之后），凑满 5 张。
 
-【Files 栏怎么摆】（2026-10-23 定）
-务必：小包 = Main File（大按钮），full 包 = Optional File。
-理由：① 45 KB vs 38.6 MB，让 99% 的人下 45 KB；② full 里捆的是 BepInEx [b]be.789[/b]，而站内前置包是 [b]be.790[/b]
-——已经装了前置包的人再解压 full，会把 BepInEx/core 的 37 个文件 + winhttp.dll + doorstop_config.ini 覆盖回旧版
-（等于给别人的共享依赖做降级，会连带搞坏他别的 mod）。③ 正文安装步骤本来就是「先装前置包 → 再放插件」，摆反了文案对不上。
-操作：ADD FILES 传小包 → Category 选 [b]Main File[/b]；
-      回来点 full 那条的 [b]Edit File[/b] → Category 改成 [b]Optional File[/b]（Nexus 允许事后改分类，不用删了重传）。
+【Requirements 栏怎么填】（上传页 Section 5: Requirements and Mirrors，四块）
 
-两个文件描述（Files 页签里直接显示，很多人不看正文，所以警告写这儿）：
+1) Official Mod Requirements（DLC 勾选）
+   Silver Pines 没有 DLC ⇒ 全部不勾，留空。
 
---- 小包 Main File ---
-Plugin only, 45 KB. Requires BepInEx 6 IL2CPP (be.789 or newer) - grab the "Silver Pines BepInEx 6 IL2CPP Pack" from this site first if you don't have it.
-Unzip and merge the BepInEx folder into the game root. Result: BepInEx\plugins\SilverPinesCombat\SilverPinesCombat.dll
+2) Required mods on the Nexus（站内前置，可搜索添加）
+   ⚠ 实测站内 [b]Silver Pines BepInEx 6 IL2CPP Pack[/b]（mods/20, IceBoxStudio）里捆的是
+   [b]BepInEx 6.0.0-be.788-5b766a3[/b]（32.7 MB，491 unique DLs），比本插件编译测试用的 [b]be.789[/b] 旧一个 build。
+   ⇒ [u]默认别加[/u]。加了等于告诉 489 个已装 pack 的人"你已就绪"，实际会跑在未验证组合上
+     （interop 程序集由 BepInEx 首次启动生成，跨 be 版本不保证签名一致 ⇒ 可能 TypeLoadException）。
+   ⇒ 只有当你在 be.788 上实测通过后，再加它。加了对用户体验最好：Vortex 会自动提示补前置，且主文件能退回 45 KB。
 
---- full 包 Optional File ---
-Same plugin, with BepInEx be.789 bundled - use this ONLY if you have no BepInEx at all.
-[b]Do not use this if you already installed the be.790 pack[/b] - it would overwrite BepInEx core with the older build.
+3) Other required resources（手填名称 + URL + 说明）—— 推荐用这块代替上一块
+   Name: BepInEx 6.0.0-bleeding-edge (IL2CPP, win-x64)
+   URL:  https://builds.bepinex.dev/projects/bepinex_be
+   Note: Requires be.789 or newer. The game uses metadata v39; older BepInEx builds fail with
+         "Unsupported metadata version found! We support 23-29, got 39".
+
+4) Mod Mirrors（备用下载源）
+   Name: GitHub
+   URL:  https://github.com/15172396214/SilverPinesCombat/releases
+   （可选，但建议加：Nexus 有时限速，源码和 Release 也在那儿）
+
+
+【Files 栏怎么摆】（2026-10-23 实测修正，之前那条说法有误）
+先纠正一个事实：站内前置包是 [b]be.788[/b]，不是 be.790；本插件捆的是 [b]be.789[/b]，比它[b]新[/b]。
+所以"覆盖成旧版"的说法不成立 —— 实际是升一个 build。
+
+两个方案，选一个：
+
+★ 方案 A（稳，你现在的摆法）：full = Main File，小包 = Optional File
+  理由：用户拿到的就是我们实测过的确切组合（be.789 + DLL），不赌兼容性。
+  小包描述要写清"给已经有 be.789+ 的人"，别让新手去下它。
+  代价：列表页主下载显示 38.6 MB，会劝退一部分人（一个 45 KB 的插件挂 38 MB 有点别扭）。
+
+★ 方案 B（推荐，但需要一次实测）：小包 = Main File，full = Optional File，并把 pack 设为 required
+  前提：把游戏目录的 BepInEx 换成站内 pack 的 be.788，跑一次看插件是否正常加载（diagnose 7/7 + 三个功能都在）。
+  能跑 ⇒ 489 个已有 pack 的用户直接可用，主下载只有 45 KB，Vortex 还能自动补前置。这是最优解。
+  不能跑 ⇒ 回到方案 A，并在正文 Requirements 里写明 be.789+。
+
+两个文件描述（Files 页签直接显示，多数人不看正文页）：
+
+--- full 包 / Main File（方案 A）---
+Same plugin with BepInEx 6.0.0-be.789 bundled, for people starting from nothing.
+Unzip the whole thing into the game root (Steam -> Library -> right click Silver Pines ->
+Manage -> Browse local files). First launch hangs 1-3 minutes while BepInEx generates interop DLLs.
+Result: BepInEx\plugins\SilverPinesCombat\SilverPinesCombat.dll
+If you already run BepInEx 6 IL2CPP be.789 or newer, take the smaller optional file instead.
+
+--- 小包 / Optional File ---
+Plugin only, 45 KB. For users who already have BepInEx 6 IL2CPP [b]be.789 or newer[/b] installed.
+Unzip and merge the BepInEx folder into the game root.
+[b]Do not install this on the older be.788 pack from this site[/b] - it was not built or tested against it.
+Use the main file instead if you are not sure.
 
 下面三段分别对应 Nexus 上传页的三个字段，直接复制粘贴。
 
@@ -79,15 +116,16 @@ Also included: F1–F5 cheat toggles, F6 slow motion, hitbox drawing (off by def
 
 [size=4][b]Install[/b][/size]
 [list=1]
-[*]Install a BepInEx 6 IL2CPP pack first. There is already one on this site — [b]Silver Pines BepInEx 6 IL2CPP Pack[/b] (be.790). Mods that ship their own BepInEx work too.
+[*]You need BepInEx 6 IL2CPP [b]be.789 or newer[/b]. The easiest way: take [b]SilverPinesCombat-1.0.0-full.zip[/b], which already contains it.
 [*]Grab [b]SilverPinesCombat-1.0.0.zip[/b] and merge its [i]BepInEx[/i] folder into the game root (Steam → Library → right-click Silver Pines → Manage → Browse local files). Result: [i]BepInEx\plugins\SilverPinesCombat\SilverPinesCombat.dll[/i].
 [*]Launch the game. The [b]first launch hangs for 1–3 minutes[/b] — BepInEx is generating ~180 proxy DLLs under [i]BepInEx\interop\[/i]. It looks frozen but isn't; don't kill it. Later launches are instant.
 [*]Press F7 in game to show/hide the panel.
 [/list]
-[b]SilverPinesCombat-1.0.0-full.zip[/b] is the same plugin with BepInEx be.789 bundled, for people starting from nothing. If you already installed be.790 from the pack above, use the small zip — don't mix the two.
+[b]SilverPinesCombat-1.0.0.zip[/b] (45 KB) is the plugin alone, for those who already run be.789 or newer. Note the be.788 pack already on this site is one build older — the full archive is the safe choice if you are on it.
 
 [size=4][b]Requirements[/b][/size]
-BepInEx 6.0.0-bleeding-edge ([b]be.789 or newer[/b]), IL2CPP, win-x64. The game uses metadata version 39 — older BepInEx builds fail with [i]Unsupported metadata version found! We support 23-29, got 39[/i].
+BepInEx 6.0.0-bleeding-edge [b]be.789 or newer[/b] (IL2CPP, win-x64), or just use the full archive which bundles it.
+The game uses metadata v39 — older BepInEx builds fail with [i]Unsupported metadata version found! We support 23-29, got 39[/i] and the game will not start with mods at all.
 
 
 [size=4][b]Hotkeys[/b][/size]
