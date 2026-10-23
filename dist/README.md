@@ -22,6 +22,11 @@
 
 游戏根目录在哪：Steam → 库 → 右键《Silver Pines》→ 管理 → 浏览本地文件。
 
+⚠️ **别用「解压到 SilverPinesCombat-1.0.0-full\」**。Windows 资源管理器的「全部解压缩」默认会多套一层子文件夹
+（路径变成 `...\Silver Pines\SilverPinesCombat-1.0.0-full\`），这样 `winhttp.dll` 就深了一层，
+**游戏能正常启动、但 mod 完全不加载**，而且没有任何报错——最难查的那种。解压时把目标路径末尾那段
+文件夹名删掉，让它正好等于 `Silver Pines`。
+
 解压完应该长这样：
 
 ```
@@ -36,8 +41,12 @@ Silver Pines\
     ├── interop\             ← 首次启动后才会生成
     └── plugins\
         └── SilverPinesCombat\
-            └── SilverPinesCombat.dll   ← 本 mod
+            ├── SilverPinesCombat.dll   ← 本 mod
+            ├── README.md / README.en.md
+            └── THIRD-PARTY-NOTICES.txt
 ```
+
+文档都放在插件自己的文件夹里，不会往游戏根目录乱扔文件——所以卸载就是删这一个文件夹。
 
 ### 情况 B：你已经装过 BepInEx
 

@@ -22,6 +22,11 @@ Grab **`SilverPinesCombat-1.0.0-full.zip`** and extract the whole thing into the
 
 Game root: Steam → Library → right-click *Silver Pines* → Manage → Browse local files.
 
+⚠️ **Do not use "Extract to SilverPinesCombat-1.0.0-full\"**. Windows Explorer's "Extract All" pre-fills the
+destination with an extra subfolder (`...\Silver Pines\SilverPinesCombat-1.0.0-full\`). That puts `winhttp.dll`
+one level too deep: **the game starts fine and the mod silently never loads**, with no error at all — the worst
+kind of bug to trace. Trim the trailing folder name off the path so it ends exactly at `Silver Pines`.
+
 After extraction:
 
 ```
@@ -36,8 +41,13 @@ Silver Pines\
     ├── interop\             <- generated on first launch
     └── plugins\
         └── SilverPinesCombat\
-            └── SilverPinesCombat.dll   <- this mod
+            ├── SilverPinesCombat.dll   <- this mod
+            ├── README.md / README.en.md
+            └── THIRD-PARTY-NOTICES.txt
 ```
+
+Every document lives inside the plugin's own folder, so nothing is dropped loose into the game root —
+uninstalling means deleting that one folder.
 
 ### Case B — you already have BepInEx
 

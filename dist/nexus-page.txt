@@ -129,11 +129,22 @@ Also included: F1–F5 cheat toggles, F6 slow motion, hitbox drawing (off by def
 [size=4][b]Install[/b][/size]
 [list=1]
 [*]Download [b]SilverPinesCombat-1.0.0-full.zip[/b] — the main file. It ships the plugin together with BepInEx 6.0.0-be.789, so nothing else is required.
-[*]Extract the whole archive into the game root: Steam → Library → right-click [i]Silver Pines[/i] → Manage → Browse local files.
+[*]Extract the whole archive [b]into the game root[/b]: Steam → Library → right-click [i]Silver Pines[/i] → Manage → Browse local files.
+[b]Watch out:[/b] Windows Explorer's "Extract All" pre-fills the destination as a [i]new subfolder[/i]
+(e.g. [i]...\\Silver Pines\\SilverPinesCombat-1.0.0-full\\[/i]). Delete that trailing folder name so the path
+ends at [i]Silver Pines[/i], then extract. Otherwise [i]winhttp.dll[/i] ends up one level too deep, the game
+starts normally and the mod simply never loads — which looks like the mod is broken.
 [*]Launch the game. The [b]first launch hangs for 1–3 minutes[/b] — BepInEx is generating ~180 proxy DLLs under [i]BepInEx\interop\[/i]. It looks frozen, but it isn't; don't kill it. Every launch after that is instant.
 [*]Press F7 in game to show/hide the panel.
 [/list]
-After that you should have [i]BepInEx\plugins\SilverPinesCombat\SilverPinesCombat.dll[/i] and a new config at [i]BepInEx\config\silverpines.combat.cfg[/i].
+Check that these exist afterwards:
+
+[list]
+[*][i]Silver Pines\\winhttp.dll[/i]  ← proves you extracted to the right level
+[*][i]Silver Pines\\BepInEx\\plugins\\SilverPinesCombat\\SilverPinesCombat.dll[/i]
+[*][i]Silver Pines\\BepInEx\\config\\silverpines.combat.cfg[/i]  ← appears after first launch
+[/list]
+The archive puts every document inside [i]BepInEx\\plugins\\SilverPinesCombat\\[/i], so nothing is dropped loose into the game folder.
 
 [size=4][b]Already modding this game?[/b][/size]
 If you already run BepInEx 6 IL2CPP [b]be.789 or newer[/b], grab the optional [b]SilverPinesCombat-1.0.0.zip[/b] (45 KB, plugin only) and merge its [i]BepInEx[/i] folder into the game root — your existing setup stays exactly as it is.
@@ -163,7 +174,10 @@ None of these is in v1.0.0 — this is the direction, not a promise:
 [/list]
 
 [size=4][b]Uninstall[/b][/size]
-Delete [i]BepInEx\plugins\SilverPinesCombat\[/i]. Nothing else was touched.
+Delete the folder [i]BepInEx\plugins\SilverPinesCombat\[/i]. That removes the plugin and all of its documentation.
+If you installed the full archive and run nothing else with BepInEx, you can also delete [i]winhttp.dll[/i],
+[i]doorstop_config.ini[/i], [i].doorstop_version[/i], the [i]dotnet[/i] folder and the [i]BepInEx[/i] folder — those
+belong to BepInEx, not to this mod. Keep them if you use other mods.
 
 [size=4][b]Source & license[/b][/size]
 Source: https://github.com/15172396214/SilverPinesCombat
