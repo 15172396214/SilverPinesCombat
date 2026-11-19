@@ -21,12 +21,12 @@
 
 ### 情况 A：你什么都没有（推荐）
 
-下载 **`SilverPinesCombat-1.0.0-full.zip`**，整个解压到游戏根目录。
+下载 **`SilverPinesCombat-1.1.0-full.zip`**，整个解压到游戏根目录。
 
 游戏根目录在哪：Steam → 库 → 右键《Silver Pines》→ 管理 → 浏览本地文件。
 
-⚠️ **别用「解压到 SilverPinesCombat-1.0.0-full\」**。Windows 资源管理器的「全部解压缩」默认会多套一层子文件夹
-（路径变成 `...\Silver Pines\SilverPinesCombat-1.0.0-full\`），这样 `winhttp.dll` 就深了一层，
+⚠️ **别用「解压到 SilverPinesCombat-1.1.0-full\」**。Windows 资源管理器的「全部解压缩」默认会多套一层子文件夹
+（路径变成 `...\Silver Pines\SilverPinesCombat-1.1.0-full\`），这样 `winhttp.dll` 就深了一层，
 **游戏能正常启动、但 mod 完全不加载**，而且没有任何报错——最难查的那种。解压时把目标路径末尾那段
 文件夹名删掉，让它正好等于 `Silver Pines`。
 
@@ -172,7 +172,7 @@ dotnet\
 | **换弹不用先瞄准** | 硬调 `StartReload` 会把主线程卡死。得先找到游戏自己那道「必须先瞄准」的输入闸门，放行而不是绕开 |
 | **移动中也能踩踏** | 限制在攻击状态机里，不是输入层放不放行的问题。要把移动状态接进踩踏的前置条件 |
 
-v1.0.0 只包含开头那三件：闪避取消、踩踏前踏、瞄准指示线。
+以上是后续计划，当前 v1.1.0 尚未包含。
 
 ---
 
@@ -194,7 +194,7 @@ BepInEx\LogOutput.log
 搜 `[SPC]`，正常应该有：
 
 ```
-[SPC] loaded v1.0.0 (be.789 / IL2CPP) lang=zh
+[SPC] loaded v1.1.0 (be.789 / IL2CPP) lang=zh
 [SPC] diagnose: 7/7 fields resolved
 ```
 

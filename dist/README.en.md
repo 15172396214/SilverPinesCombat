@@ -21,12 +21,12 @@ UI language: **中文 / English** — click the button at the right end of the t
 
 ### Case A — you have nothing (recommended)
 
-Grab **`SilverPinesCombat-1.0.0-full.zip`** and extract the whole thing into the game root.
+Grab **`SilverPinesCombat-1.1.0-full.zip`** and extract the whole thing into the game root.
 
 Game root: Steam → Library → right-click *Silver Pines* → Manage → Browse local files.
 
-⚠️ **Do not use "Extract to SilverPinesCombat-1.0.0-full\"**. Windows Explorer's "Extract All" pre-fills the
-destination with an extra subfolder (`...\Silver Pines\SilverPinesCombat-1.0.0-full\`). That puts `winhttp.dll`
+⚠️ **Do not use "Extract to SilverPinesCombat-1.1.0-full\"**. Windows Explorer's "Extract All" pre-fills the
+destination with an extra subfolder (`...\Silver Pines\SilverPinesCombat-1.1.0-full\`). That puts `winhttp.dll`
 one level too deep: **the game starts fine and the mod silently never loads**, with no error at all — the worst
 kind of bug to trace. Trim the trailing folder name off the path so it ends exactly at `Silver Pines`.
 
@@ -165,7 +165,7 @@ dotnet\
 | **Reload without aiming first** | Calling `StartReload` directly deadlocks the main thread. Need to find the game's own "must be aiming" input gate and let it through, not bypass it |
 | **Stomp while moving** | The restriction sits in the attack state machine, so it isn't an input-layer allow/deny problem. The move state has to be wired into the stomp precondition |
 
-v1.0.0 ships only the three features listed at the top: dodge cancel, stomp snap, aim line.
+These are planned and are not in v1.1.0 yet.
 
 ---
 
@@ -187,7 +187,7 @@ BepInEx\LogOutput.log
 Search for `[SPC]`. A healthy start looks like:
 
 ```
-[SPC] loaded v1.0.0 (be.789 / IL2CPP) lang=zh
+[SPC] loaded v1.1.0 (be.789 / IL2CPP) lang=zh
 [SPC] diagnose: 7/7 fields resolved
 ```
 

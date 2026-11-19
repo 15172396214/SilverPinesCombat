@@ -13,7 +13,7 @@
 ### 安装 / Install
 
 - 已装 BepInEx 6（be.789+）→ 下载 `SilverPinesCombat-1.1.0.zip`（57 KB）
-- 全新安装 → 下载 `SilverPinesCombat-1.1.0-full.zip`（34.4 MB，含运行时）
+- 全新安装 → 下载 `SilverPinesCombat-1.1.0-full.zip`（35.7 MB，含运行时与引擎库）
 
 ⚠️ 解压别多套一层：`winhttp.dll` 必须和 `Carpenter.exe` 同级。首次启动会卡 1–3 分钟（BepInEx 生成 interop 程序集），属正常现象。
 

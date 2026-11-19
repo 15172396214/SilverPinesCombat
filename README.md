@@ -23,14 +23,15 @@
 
 | 文件 | 体积 | 内容 |
 |---|---|---|
-| `SilverPinesCombat-1.1.0-full.zip` | **32.8 MB** | 插件 + BepInEx 6 be.789 全套，什么都不装，解压到游戏根目录就能用 |
+| `SilverPinesCombat-1.1.0-full.zip` | **35.7 MB** | 插件 + BepInEx 6 be.789 全套，**已内置 unity-libs 引擎库**，首次启动不需要联网 |
 | `SilverPinesCombat-1.1.0.zip` | **56 KB** | 只有插件 DLL，适合已经装过 BepInEx 6 IL2CPP（be.789 或更新）的人 |
 
 ⚠️ 解压时别让资源管理器多套一层目录（默认会解到 `Silver Pines\SilverPinesCombat-1.1.0-full\`）。
 `winhttp.dll` 必须在 `Silver Pines\` 这一层，否则游戏能启动但 mod 完全不加载、且没有任何报错。
 
-> `-full` 包里**不含** `BepInEx\unity-libs\`——那是首次启动时 BepInEx 自己生成的缓存（约 11 MB），
-> 打进压缩包会让 Nexus 的自动扫描判定为「嵌套压缩包」而隔离整个文件。
+> 本仓库 Release 的 `-full` 包**已内置** `BepInEx/unity-libs/6000.3.15.zip`（2.9 MB），
+> 所以首次启动不需要连 `unity.bepinex.dev`（国内经常卡住）。
+> Nexus 版出于它的自动扫描规则（嵌套压缩包会被隔离）没有内置，首次启动需联网下载一次。
 
 安装和使用说明见 [`dist/README.md`](dist/README.md)（中文）/ [`dist/README.en.md`](dist/README.en.md)（English）。
 
