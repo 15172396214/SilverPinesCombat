@@ -1,4 +1,4 @@
-# Silver Pines Combat v1.1.0
+# Silver Pines Combat v1.1.1
 
 [English](README.en.md) | [中文](README.md)
 
@@ -21,7 +21,7 @@
 
 ### 情况 A：你什么都没有（推荐）
 
-下载 **`SilverPinesCombat-1.1.0-full.zip`**，整个解压到游戏根目录。
+下载 **`SilverPinesCombat-1.1.1-full.zip`**，整个解压到游戏根目录。
 
 游戏根目录在哪：Steam → 库 → 右键《Silver Pines》→ 管理 → 浏览本地文件。
 
@@ -180,6 +180,14 @@ dotnet\
 
 游戏本体更新后，这个 mod **有可能失效**。原因不是懒，是 IL2CPP 的性质：每次游戏打补丁，`global-metadata.dat` 的版本号和方法地址都可能变。
 
+### 当前适配的版本
+
+游戏 build **26489514**（Unity 6000.3.15f1，2026-11-19 更新）。
+
+⚠️ 从这个 build 开始，**近战和踩踏的判定不再是实体碰撞体**（改成了 `OverlapBox` 一类的即时检测，场上没有可遍历的对象）。后果：`绘制判定框` 只能显示远程和爆炸的判定范围，近战/踩踏画不出来 —— 游戏自己的调试工具同样画不出来。这是游戏侧的改动，mod 无法绕过。
+
+游戏本体更新后，这个 mod **有可能失效**。原因不是懒，是 IL2CPP 的性质：每次游戏打补丁，`global-metadata.dat` 的版本号和方法地址都可能变。
+
 失效的表现：
 
 - 面板还在但功能没反应 → 方法被改名/重排
@@ -194,7 +202,7 @@ BepInEx\LogOutput.log
 搜 `[SPC]`，正常应该有：
 
 ```
-[SPC] loaded v1.1.0 (be.789 / IL2CPP) lang=zh
+[SPC] loaded v1.1.1 (be.789 / IL2CPP) lang=zh
 [SPC] diagnose: 7/7 fields resolved
 ```
 

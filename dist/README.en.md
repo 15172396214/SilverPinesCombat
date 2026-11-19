@@ -1,4 +1,4 @@
-# Silver Pines Combat v1.1.0
+# Silver Pines Combat v1.1.1
 
 [English](README.en.md) | [中文](README.md)
 
@@ -21,7 +21,7 @@ UI language: **中文 / English** — click the button at the right end of the t
 
 ### Case A — you have nothing (recommended)
 
-Grab **`SilverPinesCombat-1.1.0-full.zip`** and extract the whole thing into the game root.
+Grab **`SilverPinesCombat-1.1.1-full.zip`** and extract the whole thing into the game root.
 
 Game root: Steam → Library → right-click *Silver Pines* → Manage → Browse local files.
 
@@ -187,7 +187,7 @@ BepInEx\LogOutput.log
 Search for `[SPC]`. A healthy start looks like:
 
 ```
-[SPC] loaded v1.1.0 (be.789 / IL2CPP) lang=zh
+[SPC] loaded v1.1.1 (be.789 / IL2CPP) lang=zh
 [SPC] diagnose: 7/7 fields resolved
 ```
 

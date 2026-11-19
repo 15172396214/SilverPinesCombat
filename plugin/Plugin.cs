@@ -15,7 +15,7 @@ using UnityEngine;
 
 namespace SilverPinesCombat
 {
-    [BepInPlugin(GUID, "Silver Pines Combat", "1.1.0")]
+    [BepInPlugin(GUID, "Silver Pines Combat", "1.1.1")]
     public class CombatPlugin : BasePlugin
     {
         public const string GUID = "silverpines.combat";
@@ -137,7 +137,7 @@ namespace SilverPinesCombat
             CombatPatches.Apply();
 
             L10n.Lang = ResolveLang(CfgLanguage?.Value);
-            Log.LogInfo("[SPC] loaded v1.1.0 (be.789 / IL2CPP) lang=" + L10n.Lang);
+            Log.LogInfo("[SPC] loaded v1.1.1 (be.789 / IL2CPP) lang=" + L10n.Lang);
 
 #if !SPT_DUMMY_VALIDATION
             AddComponent<CombatBehaviour>();
@@ -2091,7 +2091,7 @@ namespace SilverPinesCombat
             { "stomp.range",     new[]{ "吸附半径 {0:0.0} m",    "Snap radius {0:0.0} m" } },
             { "stomp.stop",      new[]{ "停留距离 {0:0.00} m（按敌人宽度自适应）", "Stop distance {0:0.00} m (auto by enemy width)" } },
             { "stomp.dur",       new[]{ "位移时长 {0:0.000} s（0=瞬移）", "Lunge time {0:0.000} s (0 = teleport)" } },
-            { "drawboxes",       new[]{ "绘制判定框",            "Draw hitboxes" } },
+            { "drawboxes",       new[]{ "绘制判定框（仅远程/爆炸）",            "Draw hitboxes (ranged/explosions only)" } },
 
             { "aim.enable",      new[]{ "显示瞄准线",            "Show aim line" } },
             { "aim.len",         new[]{ "线长 {0:0.00} m",       "Length {0:0.00} m" } },
@@ -2436,6 +2436,7 @@ namespace SilverPinesCombat
             GUILayout.Space(8);
             GUILayout.Label(_slow ? L10n.F("slow.on", CombatPlugin.CfgSlowMo.Value) : L10n.T("slow.off"));
             CombatPlugin.CfgSlowMo.Value = GUILayout.HorizontalSlider(CombatPlugin.CfgSlowMo.Value, 0.05f, 1f);
+
         }
 
     }
